@@ -53,27 +53,30 @@ function HomeDashboard({ token: initialToken }) {
     try {
       const res = await authFetch(`${DESKTOP_API}/api/mobile-scans`);
       if (!res.ok) return console.error('Failed to fetch scan history', res.status);
-      const data = await res.json();
+      const scans = await res.json();
 
-      setScanStats({
-        totalScans: data.totalScans || 0,
-        reparable: data.totalReparable || 0,
-        beyondRepair: data.totalBeyondRepair || 0,
-        healthy: data.totalHealthy || 0
-      });
+      // Compute stats from array
+      const stats = {
+        totalScans: scans.length,
+        reparable: scans.filter(s => s.status?.toLowerCase() === 'reparable').length,
+        beyondRepair: scans.filter(s => s.status?.toLowerCase() === 'beyond repair').length,
+        healthy: scans.filter(s => s.status?.toLowerCase() === 'healthy').length
+      };
 
-      if (data.sessions) {
-        setScanHistory(
-          data.sessions.flatMap(session =>
-            session.scans.map(scan => ({
-              ...scan,
-              date: scan.timestamp,
-              barcode: scan.barcode || scan.screenId,
-              status: scan.status
-            }))
-          )
-        );
-      }
+      setScanStats(stats);
+
+      // Flatten for display
+      setScanHistory(
+        scans.map(scan => ({
+          ...scan,
+          date: scan.timestamp || scan.date,
+          barcode: scan.barcode || scan.screenId,
+          status: scan.status,
+          technician: scan.userId
+            ? `${scan.userId.name} ${scan.userId.surname}`
+            : 'Unknown Technician'
+        }))
+      );
     } catch (err) {
       console.error('Error fetching scan history', err);
     }
@@ -157,7 +160,7 @@ function HomeDashboard({ token: initialToken }) {
           <ul>
             {scanHistory.map((scan, idx) => (
               <li key={idx}>
-                {scan.barcode} - {scan.status} ({new Date(scan.date).toLocaleString()})
+                {scan.barcode} - {scan.status} - {scan.technician} ({new Date(scan.date).toLocaleString()})
               </li>
             ))}
           </ul>
@@ -168,7 +171,7 @@ function HomeDashboard({ token: initialToken }) {
           <ul>
             {notifications.map((note, idx) => (
               <li key={idx}>
-                {note.message} ({new Date(note.timestamp).toLocaleString()})
+                {note.message} ({new Date(note.date || note.timestamp).toLocaleString()})
               </li>
             ))}
           </ul>
