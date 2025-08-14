@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './AdminRegister.css';
 
+const DESKTOP_API = 'https://embroider-tech-desktopmanagementapp.onrender.com';
+
 function AdminRegister() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -32,7 +34,7 @@ function AdminRegister() {
 
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/admin/register', {
+      const response = await fetch(`${DESKTOP_API}/api/admin/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

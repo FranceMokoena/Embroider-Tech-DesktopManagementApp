@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import './HomeDashboard.css';
 
-const API_BASE_URL = 'https://embroider-tech-desktopmanagementapp.onrender.com';
-
+// Two separate APIs
+const MOBILE_API = 'https://embroider-scann-app.onrender.com';
+const DESKTOP_API = 'https://embroider-tech-desktopmanagementapp.onrender.com';
 
 function HomeDashboard({ token }) {
   const [userProfile, setUserProfile] = useState(null);
@@ -19,9 +20,10 @@ function HomeDashboard({ token }) {
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
+  // Fetch admin profile from desktop backend
   const fetchUserProfile = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/profile`, {
+      const res = await fetch(`${DESKTOP_API}/api/auth/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) setUserProfile(await res.json());
@@ -30,9 +32,10 @@ function HomeDashboard({ token }) {
     }
   };
 
+  // Fetch scan history from mobile backend
   const fetchScanHistory = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/scan/history`, {
+      const res = await fetch(`${MOBILE_API}/api/scan/history`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -61,9 +64,10 @@ function HomeDashboard({ token }) {
     }
   };
 
+  // Fetch users from desktop backend
   const fetchUsers = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/admin/users`, {
+      const res = await fetch(`${DESKTOP_API}/api/admin/users`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) setUsers(await res.json());
@@ -72,9 +76,10 @@ function HomeDashboard({ token }) {
     }
   };
 
+  // Fetch notifications from desktop backend
   const fetchNotifications = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/messaging/notifications`, {
+      const res = await fetch(`${DESKTOP_API}/api/messaging/notifications`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) setNotifications(await res.json());
@@ -88,7 +93,7 @@ function HomeDashboard({ token }) {
     fetchScanHistory();
     fetchUsers();
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
+    const interval = setInterval(fetchNotifications, 30000); // refresh notifications every 30s
     return () => clearInterval(interval);
   }, []);
 
