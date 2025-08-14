@@ -1,4 +1,3 @@
-// server.js
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
@@ -16,8 +15,8 @@ mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
-.then(() => console.log('MongoDB connected'))
-.catch(err => console.error('MongoDB connection error:', err));
+.then(() => console.log('✅ MongoDB connected'))
+.catch(err => console.error('❌ MongoDB connection error:', err));
 
 // Admin schema
 const adminSchema = new mongoose.Schema({
@@ -31,11 +30,10 @@ const adminSchema = new mongoose.Schema({
 
 const Admin = mongoose.model('Admin', adminSchema);
 
-// Middleware to verify JWT
+// JWT Middleware
 const authMiddleware = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
-
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.adminId = decoded.id;
@@ -46,7 +44,6 @@ const authMiddleware = (req, res, next) => {
 };
 
 // ------------------- ADMIN ROUTES ------------------- //
-
 // Register
 app.post('/api/admin/register', async (req, res) => {
   try {
@@ -55,12 +52,9 @@ app.post('/api/admin/register', async (req, res) => {
     if (existingAdmin) return res.status(400).json({ error: 'Username or email already exists' });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    const newAdmin = new Admin({
-      name, surname, username, email, department, password: hashedPassword
-    });
-
+    const newAdmin = new Admin({ name, surname, username, email, department, password: hashedPassword });
     await newAdmin.save();
+
     res.status(201).json({ message: 'Admin registered successfully' });
   } catch (err) {
     console.error(err);
@@ -83,7 +77,7 @@ app.post('/api/admin/login', async (req, res) => {
     res.status(200).json({
       message: 'Login successful',
       token,
-      admin: { username: admin.username, email: admin.email, name: admin.name, surname: admin.surname }
+      admin: { username: admin.username, email: admin.email, name: admin.name, surname: admin.surname, department: admin.department }
     });
   } catch (err) {
     console.error(err);
@@ -91,7 +85,7 @@ app.post('/api/admin/login', async (req, res) => {
   }
 });
 
-// Get logged-in admin profile
+// Admin profile
 app.get('/api/auth/profile', authMiddleware, async (req, res) => {
   try {
     const admin = await Admin.findById(req.adminId).select('-password');
@@ -102,7 +96,7 @@ app.get('/api/auth/profile', authMiddleware, async (req, res) => {
   }
 });
 
-// Get all admins/users
+// All admins/users
 app.get('/api/admin/users', authMiddleware, async (req, res) => {
   try {
     const admins = await Admin.find().select('-password');
@@ -113,19 +107,16 @@ app.get('/api/admin/users', authMiddleware, async (req, res) => {
 });
 
 // ------------------- MOBILE PROXY ------------------- //
-
 const MOBILE_API = 'https://embroider-scann-app.onrender.com';
 
-// Fetch all scans / user scan history
+// Mobile scans
 app.get('/api/mobile-scans', authMiddleware, async (req, res) => {
   try {
-    const mobileToken = process.env.MOBILE_API_TOKEN; // Must exist
+    const mobileToken = process.env.MOBILE_API_TOKEN;
     const response = await fetch(`${MOBILE_API}/api/scan/history`, {
       headers: { Authorization: `Bearer ${mobileToken}` }
     });
-
     if (!response.ok) return res.status(response.status).send(await response.text());
-
     const data = await response.json();
     res.json(data);
   } catch (err) {
@@ -134,11 +125,11 @@ app.get('/api/mobile-scans', authMiddleware, async (req, res) => {
   }
 });
 
-// Fetch users from mobile (if needed)
-app.get('/api/mobile-users', authMiddleware, async (req, res) => {
+// Mobile sessions
+app.get('/api/mobile-sessions', authMiddleware, async (req, res) => {
   try {
     const mobileToken = process.env.MOBILE_API_TOKEN;
-    const response = await fetch(`${MOBILE_API}/api/users`, {
+    const response = await fetch(`${MOBILE_API}/api/sessions`, {
       headers: { Authorization: `Bearer ${mobileToken}` }
     });
     if (!response.ok) return res.status(response.status).send(await response.text());
@@ -146,14 +137,13 @@ app.get('/api/mobile-users', authMiddleware, async (req, res) => {
     res.json(data);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Failed to fetch mobile users' });
+    res.status(500).json({ error: 'Failed to fetch mobile sessions' });
   }
 });
 
-// Fetch notifications from mobile (dummy example)
+// Notifications (dummy or proxy)
 app.get('/api/messaging/notifications', authMiddleware, async (req, res) => {
   try {
-    // Example: you can proxy from mobile API or generate dummy notifications
     res.json([
       { _id: '1', message: 'User X completed scan', date: new Date() },
       { _id: '2', message: 'User Y added new device', date: new Date() }
@@ -164,6 +154,5 @@ app.get('/api/messaging/notifications', authMiddleware, async (req, res) => {
 });
 
 // ------------------- START SERVER ------------------- //
-
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -32,7 +32,8 @@ function AdminLogin() {
       } else {
         // Save token to localStorage for future API requests
         localStorage.setItem('adminToken', data.token);
-        localStorage.setItem('adminUsername', data.admin.username);
+localStorage.setItem('adminUsername', data.admin.username);
+
 
         alert('Login successful! Redirecting to dashboard...');
         navigate('/home-dashboard');
@@ -54,19 +55,38 @@ function AdminLogin() {
         </h1>
 
         <form onSubmit={handleLogin} className="login-form">
-          <input type="text" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} required />
+          <input
+            type="text"
+            placeholder="Username"
+            value={username}
+            onChange={e => setUsername(e.target.value)}
+            required
+          />
 
           <div className="password-wrapper">
-            <input type={showPassword ? 'text' : 'password'} placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required />
-            <span className="toggle-password" onClick={togglePassword}>{showPassword ? '🙈' : '👀'}</span>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+            />
+            <span className="toggle-password" onClick={togglePassword}>
+              {showPassword ? '🙈' : '👀'}
+            </span>
           </div>
 
-          <button type="submit" disabled={loading}>{loading ? 'Logging in...' : 'Login'}</button>
+          <button type="submit" disabled={loading}>
+            {loading ? 'Logging in...' : 'Login'}
+          </button>
         </form>
 
         <p style={{ marginTop: '15px', fontSize: '14px', color: '#555' }}>
           New admin?{' '}
-          <span style={{ color: '#2c3e50', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => navigate('/admin-register')}>
+          <span
+            style={{ color: '#2c3e50', cursor: 'pointer', textDecoration: 'underline' }}
+            onClick={() => navigate('/admin-register')}
+          >
             Register here
           </span>
         </p>
