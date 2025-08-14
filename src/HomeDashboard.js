@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import './HomeDashboard.css';
 
-const API_BASE_URL = 'https://embroider-scann-app.onrender.com';
+const API_BASE_URL = 'https://embroider-tech-desktopmanagementapp.onrender.com';
+
 
 function HomeDashboard({ token }) {
   const [userProfile, setUserProfile] = useState(null);
