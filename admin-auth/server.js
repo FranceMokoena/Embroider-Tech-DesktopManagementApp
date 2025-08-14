@@ -155,4 +155,4 @@ app.get('/api/messaging/notifications', authMiddleware, async (req, res) => {
 
 // ------------------- START SERVER ------------------- //
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Desktop backend running on port ${PORT}`));
