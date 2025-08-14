@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import './HomeDashboard.css';
 
-// Two separate APIs
-const MOBILE_API = 'https://embroider-scann-app.onrender.com';
 const DESKTOP_API = 'https://embroider-tech-desktopmanagementapp.onrender.com';
 
 function HomeDashboard({ token }) {
@@ -20,44 +18,47 @@ function HomeDashboard({ token }) {
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
-  // Fetch admin profile from desktop backend
+  // Fetch logged-in admin profile
   const fetchUserProfile = async () => {
     try {
       const res = await fetch(`${DESKTOP_API}/api/auth/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (res.ok) setUserProfile(await res.json());
+      if (!res.ok) return console.error('Failed to fetch profile', res.status);
+      const data = await res.json();
+      setUserProfile(data);
     } catch (err) {
       console.error('Error fetching profile', err);
     }
   };
 
-  // Fetch scan history from mobile backend
+  // Fetch scan history from desktop proxy
   const fetchScanHistory = async () => {
     try {
-      const res = await fetch(`${MOBILE_API}/api/scan/history`, {
+      const res = await fetch(`${DESKTOP_API}/api/mobile-scans`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (res.ok) {
-        const data = await res.json();
-        setScanStats({
-          totalScans: data.totalScans || 0,
-          reparable: data.totalReparable || 0,
-          beyondRepair: data.totalBeyondRepair || 0,
-          healthy: data.totalHealthy || 0
-        });
-        if (data.sessions) {
-          setScanHistory(
-            data.sessions.flatMap(session =>
-              session.scans.map(scan => ({
-                ...scan,
-                date: scan.timestamp,
-                barcode: scan.barcode || scan.screenId,
-                status: scan.status
-              }))
-            )
-          );
-        }
+      if (!res.ok) return console.error('Failed to fetch scan history', res.status);
+      const data = await res.json();
+
+      setScanStats({
+        totalScans: data.totalScans || 0,
+        reparable: data.totalReparable || 0,
+        beyondRepair: data.totalBeyondRepair || 0,
+        healthy: data.totalHealthy || 0
+      });
+
+      if (data.sessions) {
+        setScanHistory(
+          data.sessions.flatMap(session =>
+            session.scans.map(scan => ({
+              ...scan,
+              date: scan.timestamp,
+              barcode: scan.barcode || scan.screenId,
+              status: scan.status
+            }))
+          )
+        );
       }
     } catch (err) {
       console.error('Error fetching scan history', err);
@@ -70,7 +71,9 @@ function HomeDashboard({ token }) {
       const res = await fetch(`${DESKTOP_API}/api/admin/users`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (res.ok) setUsers(await res.json());
+      if (!res.ok) return console.error('Failed to fetch users', res.status);
+      const data = await res.json();
+      setUsers(data || []);
     } catch (err) {
       console.error('Error fetching users', err);
     }
@@ -82,7 +85,9 @@ function HomeDashboard({ token }) {
       const res = await fetch(`${DESKTOP_API}/api/messaging/notifications`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (res.ok) setNotifications(await res.json());
+      if (!res.ok) return console.error('Failed to fetch notifications', res.status);
+      const data = await res.json();
+      setNotifications(data || []);
     } catch (err) {
       console.error('Error fetching notifications', err);
     }
@@ -93,6 +98,7 @@ function HomeDashboard({ token }) {
     fetchScanHistory();
     fetchUsers();
     fetchNotifications();
+
     const interval = setInterval(fetchNotifications, 30000); // refresh notifications every 30s
     return () => clearInterval(interval);
   }, []);
@@ -106,7 +112,6 @@ function HomeDashboard({ token }) {
         <a href="#users">Technician Management</a>
         <a href="#scans">Scan History</a>
         <a href="#notifications">Notifications</a>
-        <a href="#logout">Logout</a>
       </div>
 
       {/* Main Content */}
@@ -116,7 +121,9 @@ function HomeDashboard({ token }) {
             {sidebarOpen ? '❮' : '❯'}
           </button>
           <h1>EmbroideryTech Admin Dashboard</h1>
-          {userProfile && <p>Welcome, {userProfile.username} ({userProfile.role})</p>}
+          {userProfile && (
+            <p>Welcome, {userProfile.username} ({userProfile.department || userProfile.role || 'Admin'})</p>
+          )}
         </header>
 
         {/* Stats */}
