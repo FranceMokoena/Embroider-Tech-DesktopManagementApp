@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import './HomeDashboard.css';
 
 const DESKTOP_API = process.env.REACT_APP_DESKTOP_API || 'https://embroider-tech-desktopmanagementapp.onrender.com';
@@ -16,15 +16,15 @@ function HomeDashboard({ token: initialToken }) {
   const [users, setUsers] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [filterTechnician, setFilterTechnician] = useState('');
+  const [filterDepartment, setFilterDepartment] = useState('');
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   useEffect(() => {
-    if (!token) {
-      const savedToken = localStorage.getItem('authToken');
-      if (savedToken) setToken(savedToken);
-    }
-  }, []);
+    const savedToken = initialToken || localStorage.getItem('authToken');
+    if (savedToken) setToken(savedToken);
+  }, [initialToken]);
 
   const authFetch = async (url, options = {}) => {
     if (!token) throw new Error('No JWT token found');
@@ -38,6 +38,7 @@ function HomeDashboard({ token: initialToken }) {
     });
   };
 
+  // Fetch functions
   const fetchUserProfile = async () => {
     try {
       const res = await authFetch(`${DESKTOP_API}/api/auth/profile`);
@@ -51,32 +52,11 @@ function HomeDashboard({ token: initialToken }) {
 
   const fetchScanHistory = async () => {
     try {
-      const res = await authFetch(`${DESKTOP_API}/api/mobile-scans`);
+      const res = await authFetch(`${DESKTOP_API}/api/scan-history`);
       if (!res.ok) return console.error('Failed to fetch scan history', res.status);
-      const scans = await res.json();
-
-      // Compute stats from array
-      const stats = {
-        totalScans: scans.length,
-        reparable: scans.filter(s => s.status?.toLowerCase() === 'reparable').length,
-        beyondRepair: scans.filter(s => s.status?.toLowerCase() === 'beyond repair').length,
-        healthy: scans.filter(s => s.status?.toLowerCase() === 'healthy').length
-      };
-
-      setScanStats(stats);
-
-      // Flatten for display
-      setScanHistory(
-        scans.map(scan => ({
-          ...scan,
-          date: scan.timestamp || scan.date,
-          barcode: scan.barcode || scan.screenId,
-          status: scan.status,
-          technician: scan.userId
-            ? `${scan.userId.name} ${scan.userId.surname}`
-            : 'Unknown Technician'
-        }))
-      );
+      const data = await res.json();
+      setScanStats(data.stats || { totalScans: 0, reparable: 0, beyondRepair: 0, healthy: 0 });
+      setScanHistory(data.scans || []);
     } catch (err) {
       console.error('Error fetching scan history', err);
     }
@@ -110,10 +90,26 @@ function HomeDashboard({ token: initialToken }) {
     fetchScanHistory();
     fetchUsers();
     fetchNotifications();
-
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, [token]);
+
+  // Filtered & grouped scans by technician
+  const groupedScans = useMemo(() => {
+    const filtered = scanHistory.filter(scan => {
+      const techMatch = filterTechnician ? scan.technician.includes(filterTechnician) : true;
+      const deptMatch = filterDepartment
+        ? users.find(u => `${u.name} ${u.surname}` === scan.technician)?.department.includes(filterDepartment)
+        : true;
+      return techMatch && deptMatch;
+    });
+
+    return filtered.reduce((acc, scan) => {
+      if (!acc[scan.technician]) acc[scan.technician] = [];
+      acc[scan.technician].push(scan);
+      return acc;
+    }, {});
+  }, [scanHistory, filterTechnician, filterDepartment, users]);
 
   return (
     <div className="dashboard-wrapper">
@@ -150,20 +146,44 @@ function HomeDashboard({ token: initialToken }) {
           <h2>Technicians</h2>
           <ul>
             {users.map(u => (
-              <li key={u._id}>{u.name} {u.surname} - {u.department}</li>
+              <li key={u._id}>
+                {u.name} {u.surname} - {u.department}
+              </li>
             ))}
           </ul>
         </section>
 
         <section id="scans">
           <h2>Scan History</h2>
-          <ul>
-            {scanHistory.map((scan, idx) => (
-              <li key={idx}>
-                {scan.barcode} - {scan.status} - {scan.technician} ({new Date(scan.date).toLocaleString()})
-              </li>
-            ))}
-          </ul>
+          <div className="filters">
+            <input
+              type="text"
+              placeholder="Filter by Technician"
+              value={filterTechnician}
+              onChange={e => setFilterTechnician(e.target.value)}
+            />
+            <input
+              type="text"
+              placeholder="Filter by Department"
+              value={filterDepartment}
+              onChange={e => setFilterDepartment(e.target.value)}
+            />
+          </div>
+
+          {Object.keys(groupedScans).length === 0 && <p>No scans found for selected filters.</p>}
+
+          {Object.entries(groupedScans).map(([technician, scans]) => (
+            <div key={technician} className="technician-group">
+              <h3>{technician}</h3>
+              <ul>
+                {scans.map((scan, idx) => (
+                  <li key={idx}>
+                    {scan.barcode} - {scan.status} ({new Date(scan.date).toLocaleString()})
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </section>
 
         <section id="notifications">
