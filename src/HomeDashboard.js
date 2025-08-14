@@ -1,12 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import './HomeDashboard.css';
 
-const DESKTOP_API = 'https://embroider-tech-desktopmanagementapp.onrender.com';
+const DESKTOP_API = process.env.REACT_APP_DESKTOP_API || 'https://embroider-tech-desktopmanagementapp.onrender.com';
 
-function HomeDashboard() {
-  const [token, setToken] = useState(localStorage.getItem('adminToken') || '');
+function HomeDashboard({ token: initialToken }) {
+  const [token, setToken] = useState(initialToken || '');
   const [userProfile, setUserProfile] = useState(null);
-  const [scanStats, setScanStats] = useState({ totalScans: 0, reparable: 0, beyondRepair: 0, healthy: 0 });
+  const [scanStats, setScanStats] = useState({
+    totalScans: 0,
+    reparable: 0,
+    beyondRepair: 0,
+    healthy: 0
+  });
   const [scanHistory, setScanHistory] = useState([]);
   const [users, setUsers] = useState([]);
   const [notifications, setNotifications] = useState([]);
@@ -14,49 +19,86 @@ function HomeDashboard() {
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
+  useEffect(() => {
+    if (!token) {
+      const savedToken = localStorage.getItem('authToken');
+      if (savedToken) setToken(savedToken);
+    }
+  }, []);
+
   const authFetch = async (url, options = {}) => {
     if (!token) throw new Error('No JWT token found');
-    return fetch(url, { ...options, headers: { ...options.headers, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } });
+    return fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
   };
 
   const fetchUserProfile = async () => {
-    const res = await authFetch(`${DESKTOP_API}/api/auth/profile`);
-    const data = await res.json();
-    setUserProfile(data);
+    try {
+      const res = await authFetch(`${DESKTOP_API}/api/auth/profile`);
+      if (!res.ok) return console.error('Failed to fetch profile', res.status);
+      const data = await res.json();
+      setUserProfile(data);
+    } catch (err) {
+      console.error('Error fetching profile', err);
+    }
   };
 
   const fetchScanHistory = async () => {
-    const res = await authFetch(`${DESKTOP_API}/api/mobile-scans`);
-    const data = await res.json();
+    try {
+      const res = await authFetch(`${DESKTOP_API}/api/mobile-scans`);
+      if (!res.ok) return console.error('Failed to fetch scan history', res.status);
+      const data = await res.json();
 
-    // Compute stats
-    const total = data.sessions?.reduce((sum, s) => sum + (s.scans?.length || 0), 0) || 0;
-    const reparable = data.sessions?.flatMap(s => s.scans).filter(scan => scan.status === 'Reparable').length || 0;
-    const beyondRepair = data.sessions?.flatMap(s => s.scans).filter(scan => scan.status === 'Beyond Repair').length || 0;
-    const healthy = data.sessions?.flatMap(s => s.scans).filter(scan => scan.status === 'Healthy').length || 0;
+      setScanStats({
+        totalScans: data.totalScans || 0,
+        reparable: data.totalReparable || 0,
+        beyondRepair: data.totalBeyondRepair || 0,
+        healthy: data.totalHealthy || 0
+      });
 
-    setScanStats({ totalScans: total, reparable, beyondRepair, healthy });
-
-    // Flatten scans
-    const flattened = data.sessions?.flatMap(s => s.scans.map(scan => ({
-      _id: scan._id,
-      barcode: scan.barcode,
-      status: scan.status,
-      date: scan.timestamp
-    }))) || [];
-    setScanHistory(flattened);
+      if (data.sessions) {
+        setScanHistory(
+          data.sessions.flatMap(session =>
+            session.scans.map(scan => ({
+              ...scan,
+              date: scan.timestamp,
+              barcode: scan.barcode || scan.screenId,
+              status: scan.status
+            }))
+          )
+        );
+      }
+    } catch (err) {
+      console.error('Error fetching scan history', err);
+    }
   };
 
   const fetchUsers = async () => {
-    const res = await authFetch(`${DESKTOP_API}/api/admin/users`);
-    const data = await res.json();
-    setUsers(data || []);
+    try {
+      const res = await authFetch(`${DESKTOP_API}/api/admin/users`);
+      if (!res.ok) return console.error('Failed to fetch users', res.status);
+      const data = await res.json();
+      setUsers(data || []);
+    } catch (err) {
+      console.error('Error fetching users', err);
+    }
   };
 
   const fetchNotifications = async () => {
-    const res = await authFetch(`${DESKTOP_API}/api/messaging/notifications`);
-    const data = await res.json();
-    setNotifications(data || []);
+    try {
+      const res = await authFetch(`${DESKTOP_API}/api/messaging/notifications`);
+      if (!res.ok) return console.error('Failed to fetch notifications', res.status);
+      const data = await res.json();
+      setNotifications(data || []);
+    } catch (err) {
+      console.error('Error fetching notifications', err);
+    }
   };
 
   useEffect(() => {
@@ -65,6 +107,7 @@ function HomeDashboard() {
     fetchScanHistory();
     fetchUsers();
     fetchNotifications();
+
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, [token]);
@@ -85,32 +128,50 @@ function HomeDashboard() {
             {sidebarOpen ? '❮' : '❯'}
           </button>
           <h1>EmbroideryTech Admin Dashboard</h1>
-          {userProfile && <p>Welcome, {userProfile.username} ({userProfile.department || 'Admin'})</p>}
+          {userProfile && (
+            <p>
+              Welcome, {userProfile.username} ({userProfile.department || 'Admin'})
+            </p>
+          )}
         </header>
 
-        <section id="overview" className="dashboard-section">
-          <h2>Dashboard Overview</h2>
-          <div className="stats-cards">
-            <div className="card">Total Scans: {scanStats.totalScans}</div>
-            <div className="card">Reparable: {scanStats.reparable}</div>
-            <div className="card">Beyond Repair: {scanStats.beyondRepair}</div>
-            <div className="card">Healthy: {scanStats.healthy}</div>
-          </div>
+        <section id="overview">
+          <h2>Overview</h2>
+          <p>Total Scans: {scanStats.totalScans}</p>
+          <p>Reparable Screens: {scanStats.reparable}</p>
+          <p>Beyond Repair: {scanStats.beyondRepair}</p>
+          <p>Healthy Screens: {scanStats.healthy}</p>
         </section>
 
-        <section id="users" className="dashboard-section">
-          <h2>Technician Management</h2>
-          <ul>{users.map(u => <li key={u._id}>{u.username} ({u.department})</li>)}</ul>
+        <section id="users">
+          <h2>Technicians</h2>
+          <ul>
+            {users.map(u => (
+              <li key={u._id}>{u.name} {u.surname} - {u.department}</li>
+            ))}
+          </ul>
         </section>
 
-        <section id="scans" className="dashboard-section">
+        <section id="scans">
           <h2>Scan History</h2>
-          <ul>{scanHistory.map(scan => <li key={scan._id}>{scan.barcode} - {scan.status} ({new Date(scan.date).toLocaleString()})</li>)}</ul>
+          <ul>
+            {scanHistory.map((scan, idx) => (
+              <li key={idx}>
+                {scan.barcode} - {scan.status} ({new Date(scan.date).toLocaleString()})
+              </li>
+            ))}
+          </ul>
         </section>
 
-        <section id="notifications" className="dashboard-section">
+        <section id="notifications">
           <h2>Notifications</h2>
-          <ul>{notifications.map(n => <li key={n._id}>{n.message} ({new Date(n.date).toLocaleString()})</li>)}</ul>
+          <ul>
+            {notifications.map((note, idx) => (
+              <li key={idx}>
+                {note.message} ({new Date(note.timestamp).toLocaleString()})
+              </li>
+            ))}
+          </ul>
         </section>
       </div>
     </div>

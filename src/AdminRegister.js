@@ -1,9 +1,8 @@
-// AdminRegister.js
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './AdminRegister.css';
 
-const DESKTOP_API = 'https://embroider-tech-desktopmanagementapp.onrender.com';
+const DESKTOP_API = process.env.REACT_APP_DESKTOP_API || 'https://embroider-tech-desktopmanagementapp.onrender.com';
 
 function AdminRegister() {
   const navigate = useNavigate();
@@ -19,10 +18,7 @@ function AdminRegister() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleChange = e => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
+  const handleChange = e => setFormData({ ...formData, [e.target.name]: e.target.value });
   const togglePassword = () => setShowPassword(prev => !prev);
 
   const handleRegister = async e => {

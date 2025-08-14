@@ -1,9 +1,9 @@
-// AdminLogin.js
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './AdminLogin.css';
 
-const DESKTOP_API = 'https://embroider-tech-desktopmanagementapp.onrender.com';
+// Use environment variable or fallback to deployed URL
+const DESKTOP_API = process.env.REACT_APP_DESKTOP_API || 'https://embroider-tech-desktopmanagementapp.onrender.com';
 
 function AdminLogin() {
   const navigate = useNavigate();
@@ -30,10 +30,8 @@ function AdminLogin() {
       if (!response.ok) {
         alert(data.error || 'Login failed');
       } else {
-        // Save token to localStorage for future API requests
-        localStorage.setItem('adminToken', data.token);
-localStorage.setItem('adminUsername', data.admin.username);
-
+        localStorage.setItem('authToken', data.token);
+        localStorage.setItem('adminUsername', data.admin.username);
 
         alert('Login successful! Redirecting to dashboard...');
         navigate('/home-dashboard');
