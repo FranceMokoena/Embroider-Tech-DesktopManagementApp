@@ -5,15 +5,14 @@ dotenv.config();
 
 class MobileApiService {
   constructor() {
-    this.baseURL = process.env.MOBILE_API_URL || 'http://localhost:5000/api';
+    this.baseURL = process.env.MOBILE_API_URL || 'https://embroider-scann-app.onrender.com/api';
     this.apiKey = process.env.MOBILE_API_KEY;
     
     this.client = axios.create({
       baseURL: this.baseURL,
-      timeout: 10000,
+      timeout: 15000,
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`
+        'Content-Type': 'application/json'
       }
     });
 
@@ -56,6 +55,16 @@ class MobileApiService {
     }
   }
 
+  // Get admin token for accessing mobile API
+  async getAdminToken() {
+    try {
+      // Use the JWT_SECRET from mobile app as admin token
+      return this.apiKey || 'franceman99';
+    } catch (error) {
+      throw this.handleError(error, 'Failed to get admin token');
+    }
+  }
+
   async getProfile(token) {
     try {
       const response = await this.client.get('/auth/profile', {
@@ -67,14 +76,29 @@ class MobileApiService {
     }
   }
 
-  // User management methods
+  // Get all users (technicians) - using scan history to extract user info
   async getAllUsers(token, filters = {}) {
     try {
-      const response = await this.client.get('/auth/users', {
-        headers: { Authorization: `Bearer ${token}` },
-        params: filters
+      // Get all scans to extract unique technicians
+      const allScans = await this.getAllScans(token, filters);
+      const users = new Map();
+      
+      allScans.data?.forEach(scan => {
+        if (scan.technician && !users.has(scan.technician)) {
+          users.set(scan.technician, {
+            _id: scan.technician,
+            name: scan.technician.split(' ')[0] || '',
+            surname: scan.technician.split(' ').slice(1).join(' ') || '',
+            department: scan.department || 'Unknown',
+            role: 'technician'
+          });
+        }
       });
-      return response.data;
+      
+      return {
+        success: true,
+        data: Array.from(users.values())
+      };
     } catch (error) {
       throw this.handleError(error, 'Failed to fetch users');
     }
@@ -116,7 +140,7 @@ class MobileApiService {
   // Scan management methods
   async getAllScans(token, filters = {}) {
     try {
-      const response = await this.client.get('/scan/all', {
+      const response = await this.client.get('/scan/history/all', {
         headers: { Authorization: `Bearer ${token}` },
         params: filters
       });
@@ -170,14 +194,41 @@ class MobileApiService {
     }
   }
 
-  // Session management methods
+  // Session management methods - using scan data to group by sessions
   async getAllSessions(token, filters = {}) {
     try {
-      const response = await this.client.get('/sessions/all', {
-        headers: { Authorization: `Bearer ${token}` },
-        params: filters
+      // Get all scans and group them by session
+      const allScans = await this.getAllScans(token, filters);
+      const sessions = new Map();
+      
+      allScans.data?.forEach(scan => {
+        const sessionKey = scan.sessionId || scan._id;
+        if (!sessions.has(sessionKey)) {
+          sessions.set(sessionKey, {
+            _id: sessionKey,
+            technician: scan.technician,
+            department: scan.department,
+            startTime: scan.timestamp,
+            endTime: null, // Will be calculated
+            scanCount: 0,
+            scans: []
+          });
+        }
+        
+        const session = sessions.get(sessionKey);
+        session.scans.push(scan);
+        session.scanCount = session.scans.length;
+        
+        // Update end time to latest scan
+        if (!session.endTime || new Date(scan.timestamp) > new Date(session.endTime)) {
+          session.endTime = scan.timestamp;
+        }
       });
-      return response.data;
+      
+      return {
+        success: true,
+        data: Array.from(sessions.values())
+      };
     } catch (error) {
       throw this.handleError(error, 'Failed to fetch sessions');
     }
@@ -194,13 +245,33 @@ class MobileApiService {
     }
   }
 
-  // Dashboard statistics
+  // Dashboard statistics - calculate from scan data
   async getDashboardStats(token) {
     try {
-      const response = await this.client.get('/admin/dashboard', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      return response.data;
+      const allScans = await this.getAllScans(token);
+      const scans = allScans.data || [];
+      
+      // Calculate statistics
+      const stats = {
+        totalScans: scans.length,
+        reparable: scans.filter(scan => scan.status === 'Reparable').length,
+        beyondRepair: scans.filter(scan => scan.status === 'Beyond Repair').length,
+        healthy: scans.filter(scan => scan.status === 'Healthy').length,
+        todayScans: scans.filter(scan => {
+          const today = new Date().toDateString();
+          return new Date(scan.timestamp).toDateString() === today;
+        }).length,
+        weeklyScans: scans.filter(scan => {
+          const weekAgo = new Date();
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          return new Date(scan.timestamp) >= weekAgo;
+        }).length
+      };
+      
+      return {
+        success: true,
+        data: stats
+      };
     } catch (error) {
       throw this.handleError(error, 'Failed to fetch dashboard stats');
     }

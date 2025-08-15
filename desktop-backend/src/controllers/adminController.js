@@ -1,6 +1,30 @@
 import mobileApiService from '../services/mobileApiService.js';
 import moment from 'moment';
 
+// Get mobile token for desktop frontend
+export const getMobileToken = async (req, res) => {
+  try {
+    // Get mobile token from environment - using the JWT_SECRET from mobile app
+    const mobileToken = process.env.MOBILE_ADMIN_TOKEN || 'franceman99';
+    
+    if (!mobileToken) {
+      return res.status(500).json({ error: 'Mobile backend token not configured' });
+    }
+
+    res.json({
+      success: true,
+      mobileToken
+    });
+
+  } catch (error) {
+    console.error('❌ Get mobile token error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get mobile token',
+      details: error.message 
+    });
+  }
+};
+
 // Dashboard Overview
 export const getDashboardStats = async (req, res) => {
   try {
