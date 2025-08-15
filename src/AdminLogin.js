@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './AdminLogin.css';
 
-// Use environment variable or fallback to local development URL
+// Use environment variable or fallback to production URL
 const DESKTOP_API = process.env.REACT_APP_DESKTOP_API || 'https://embroider-tech-desktopmanagementapp.onrender.com';
 
 function AdminLogin() {
@@ -31,7 +31,7 @@ function AdminLogin() {
         alert(data.error || 'Login failed');
       } else {
         localStorage.setItem('authToken', data.token);
-        localStorage.setItem('adminUsername', data.admin.username);
+        localStorage.setItem('adminUsername', data.user.username);
 
         alert('Login successful! Redirecting to dashboard...');
         navigate('/home-dashboard');

@@ -30,7 +30,7 @@ function AdminRegister() {
 
     setLoading(true);
     try {
-      const response = await fetch(`${DESKTOP_API}/api/admin/register`, {
+      const response = await fetch(`${DESKTOP_API}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

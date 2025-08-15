@@ -55,11 +55,23 @@ class MobileApiService {
     }
   }
 
+  // Get JWT token for mobile app access
+  async getMobileJWTToken(adminCredentials) {
+    try {
+      // Login to mobile app to get JWT token
+      const loginResponse = await this.login(adminCredentials);
+      return loginResponse.token || loginResponse.accessToken;
+    } catch (error) {
+      throw this.handleError(error, 'Failed to get mobile JWT token');
+    }
+  }
+
   // Get admin token for accessing mobile API
   async getAdminToken() {
     try {
-      // Use the JWT_SECRET from mobile app as admin token
-      return this.apiKey || 'franceman99';
+      // For now, we'll use a hardcoded admin token
+      // In production, this should be obtained through proper JWT login
+      return 'franceman99'; // This will be replaced with actual JWT token
     } catch (error) {
       throw this.handleError(error, 'Failed to get admin token');
     }
@@ -76,21 +88,23 @@ class MobileApiService {
     }
   }
 
-  // Get all users (technicians) - using scan history to extract user info
+  // Get all users (technicians) - extract from session data
   async getAllUsers(token, filters = {}) {
     try {
-      // Get all scans to extract unique technicians
-      const allScans = await this.getAllScans(token, filters);
+      // Get all sessions to extract unique technicians
+      const sessionsResponse = await this.getAllSessions(token, filters);
       const users = new Map();
       
-      allScans.data?.forEach(scan => {
-        if (scan.technician && !users.has(scan.technician)) {
-          users.set(scan.technician, {
-            _id: scan.technician,
-            name: scan.technician.split(' ')[0] || '',
-            surname: scan.technician.split(' ').slice(1).join(' ') || '',
-            department: scan.department || 'Unknown',
-            role: 'technician'
+      sessionsResponse.data?.forEach(session => {
+        if (session.technician && !users.has(session.technician)) {
+          users.set(session.technician, {
+            _id: session.technician,
+            username: session.technician, // Mobile app uses username
+            department: session.department || 'Unknown',
+            role: 'technician',
+            // Note: Mobile app doesn't have name/surname fields
+            name: session.technician.split(' ')[0] || '',
+            surname: session.technician.split(' ').slice(1).join(' ') || ''
           });
         }
       });
@@ -137,14 +151,39 @@ class MobileApiService {
     }
   }
 
-  // Scan management methods
+  // Scan management methods - extract scans from session data
   async getAllScans(token, filters = {}) {
     try {
       const response = await this.client.get('/scan/history/all', {
         headers: { Authorization: `Bearer ${token}` },
         params: filters
       });
-      return response.data;
+      
+      // Extract all scans from all sessions
+      const allScans = [];
+      response.data.sessions?.forEach(session => {
+        if (session.scans) {
+          session.scans.forEach(scan => {
+            allScans.push({
+              ...scan,
+              sessionId: session.id,
+              technician: session.technician,
+              department: session.department
+            });
+          });
+        }
+      });
+      
+      return {
+        success: true,
+        data: allScans,
+        stats: {
+          totalScans: response.data.totalScans,
+          totalReparable: response.data.totalReparable,
+          totalBeyondRepair: response.data.totalBeyondRepair,
+          totalHealthy: response.data.totalHealthy
+        }
+      };
     } catch (error) {
       throw this.handleError(error, 'Failed to fetch scans');
     }
@@ -194,40 +233,32 @@ class MobileApiService {
     }
   }
 
-  // Session management methods - using scan data to group by sessions
+  // Session management methods - using the actual session data from mobile app
   async getAllSessions(token, filters = {}) {
     try {
-      // Get all scans and group them by session
-      const allScans = await this.getAllScans(token, filters);
-      const sessions = new Map();
-      
-      allScans.data?.forEach(scan => {
-        const sessionKey = scan.sessionId || scan._id;
-        if (!sessions.has(sessionKey)) {
-          sessions.set(sessionKey, {
-            _id: sessionKey,
-            technician: scan.technician,
-            department: scan.department,
-            startTime: scan.timestamp,
-            endTime: null, // Will be calculated
-            scanCount: 0,
-            scans: []
-          });
-        }
-        
-        const session = sessions.get(sessionKey);
-        session.scans.push(scan);
-        session.scanCount = session.scans.length;
-        
-        // Update end time to latest scan
-        if (!session.endTime || new Date(scan.timestamp) > new Date(session.endTime)) {
-          session.endTime = scan.timestamp;
-        }
+      // Get all scan history which includes session data
+      const response = await this.client.get('/scan/history/all', {
+        headers: { Authorization: `Bearer ${token}` },
+        params: filters
       });
+      
+      // The mobile app returns sessions with their scans
+      const sessions = response.data.sessions || [];
+      
+      // Transform to match our expected format
+      const transformedSessions = sessions.map(session => ({
+        _id: session.id,
+        technician: session.technician,
+        department: session.department || 'Unknown',
+        startTime: session.startTime,
+        endTime: session.endTime,
+        scanCount: session.scans ? session.scans.length : 0,
+        scans: session.scans || []
+      }));
       
       return {
         success: true,
-        data: Array.from(sessions.values())
+        data: transformedSessions
       };
     } catch (error) {
       throw this.handleError(error, 'Failed to fetch sessions');

@@ -4,7 +4,8 @@ import moment from 'moment';
 // Get mobile token for desktop frontend
 export const getMobileToken = async (req, res) => {
   try {
-    // Get mobile token from environment - using the JWT_SECRET from mobile app
+    // For now, we'll use the hardcoded token
+    // In production, this should get a proper JWT token from mobile app
     const mobileToken = process.env.MOBILE_ADMIN_TOKEN || 'franceman99';
     
     if (!mobileToken) {

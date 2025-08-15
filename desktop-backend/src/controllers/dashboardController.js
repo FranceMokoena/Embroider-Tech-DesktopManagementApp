@@ -45,9 +45,7 @@ export const getDashboardOverview = async (req, res) => {
       });
 
       const scans = scansResponse.data || [];
-      
-      // Calculate statistics based on your mobile app's status values
-      const stats = {
+      const stats = scansResponse.stats || {
         totalScans: scans.length,
         reparable: scans.filter(scan => scan.status === 'Reparable').length,
         beyondRepair: scans.filter(scan => scan.status === 'Beyond Repair').length,
