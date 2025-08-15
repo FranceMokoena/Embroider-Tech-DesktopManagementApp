@@ -3,11 +3,9 @@ import mobileApiService from '../services/mobileApiService.js';
 // Get dashboard overview data
 export const getDashboardOverview = async (req, res) => {
   try {
-    const token = req.headers['mobile-token'];
-    if (!token) {
-      return res.status(401).json({ error: 'Mobile backend token required' });
-    }
-
+    // Get desktop service token directly
+    const token = await mobileApiService.getAdminToken();
+    
     // Fetch dashboard stats from mobile API
     const stats = await mobileApiService.getDashboardStats(token);
     
@@ -28,10 +26,8 @@ export const getDashboardOverview = async (req, res) => {
   // Get scan history with statistics
   export const getScanHistory = async (req, res) => {
     try {
-      const token = req.headers['mobile-token'];
-      if (!token) {
-        return res.status(401).json({ error: 'Mobile backend token required' });
-      }
+      // Get desktop service token directly
+      const token = await mobileApiService.getAdminToken();
 
       const { dateFrom, dateTo, department, status, technician } = req.query;
       
@@ -70,10 +66,8 @@ export const getDashboardOverview = async (req, res) => {
 // Get all users
 export const getUsers = async (req, res) => {
   try {
-    const token = req.headers['mobile-token'];
-    if (!token) {
-      return res.status(401).json({ error: 'Mobile backend token required' });
-    }
+    // Get desktop service token directly
+    const token = await mobileApiService.getAdminToken();
 
     const { department } = req.query;
     
@@ -98,13 +92,21 @@ export const getUsers = async (req, res) => {
 // Get user profile
 export const getUserProfile = async (req, res) => {
   try {
-    const token = req.headers['mobile-token'];
-    if (!token) {
-      return res.status(401).json({ error: 'Mobile backend token required' });
-    }
+    // Get desktop service token directly
+    const token = await mobileApiService.getAdminToken();
 
-    // Fetch user profile from mobile API
-    const profile = await mobileApiService.getProfile(token);
+    // For now, return a default admin profile
+    // In the future, this could fetch from mobile API if needed
+    const profile = {
+      _id: 'desktop-admin',
+      username: 'admin',
+      role: 'admin',
+      department: 'Management',
+      name: 'Desktop',
+      surname: 'Administrator',
+      email: 'admin@embroidery-tech.com',
+      createdAt: new Date().toISOString()
+    };
 
     res.json({
       success: true,
@@ -114,29 +116,27 @@ export const getUserProfile = async (req, res) => {
   } catch (error) {
     console.error('❌ Profile fetch error:', error);
     res.status(500).json({ 
-      error: 'Failed to fetch user profile',
+      error: 'Failed to fetch profile',
       details: error.message 
     });
   }
 };
 
-// Get sessions
+// Get all sessions
 export const getSessions = async (req, res) => {
   try {
-    const token = req.headers['mobile-token'];
-    if (!token) {
-      return res.status(401).json({ error: 'Mobile backend token required' });
-    }
+    // Get desktop service token directly
+    const token = await mobileApiService.getAdminToken();
 
-    const { dateFrom, dateTo, department } = req.query;
+    const { dateFrom, dateTo, department, technician } = req.query;
     
     // Fetch sessions from mobile API
     const sessionsResponse = await mobileApiService.getAllSessions(token, {
       dateFrom,
       dateTo,
-      department
+      department,
+      technician
     });
-
     const sessions = sessionsResponse.data || [];
 
     res.json({
@@ -153,46 +153,15 @@ export const getSessions = async (req, res) => {
   }
 };
 
-// Get notifications (admin alerts from mobile app)
+// Get notifications
 export const getNotifications = async (req, res) => {
   try {
-    const token = req.headers['mobile-token'];
-    if (!token) {
-      return res.status(401).json({ error: 'Mobile backend token required' });
-    }
+    // Get desktop service token directly
+    const token = await mobileApiService.getAdminToken();
 
-    // For now, we'll create sample notifications based on recent scans
-    // In the future, this could connect to a real notifications endpoint
-    const scansResponse = await mobileApiService.getAllScans(token, {});
-    const scans = scansResponse.data || [];
-    
-    // Generate notifications based on recent activity
+    // For now, return empty notifications
+    // In the future, this could fetch from mobile API if needed
     const notifications = [];
-    const recentScans = scans
-      .filter(scan => new Date(scan.timestamp) > new Date(Date.now() - 24 * 60 * 60 * 1000)) // Last 24 hours
-      .slice(0, 10);
-    
-    recentScans.forEach(scan => {
-      if (scan.status === 'Beyond Repair') {
-        notifications.push({
-          id: `notif_${scan._id}`,
-          message: `Screen ${scan.barcode} marked as Beyond Repair by ${scan.technician}`,
-          type: 'warning',
-          timestamp: scan.timestamp,
-          technician: scan.technician,
-          department: scan.department
-        });
-      } else if (scan.status === 'Reparable') {
-        notifications.push({
-          id: `notif_${scan._id}`,
-          message: `Screen ${scan.barcode} needs repair - assigned to ${scan.technician}`,
-          type: 'info',
-          timestamp: scan.timestamp,
-          technician: scan.technician,
-          department: scan.department
-        });
-      }
-    });
 
     res.json({
       success: true,

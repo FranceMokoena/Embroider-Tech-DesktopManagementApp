@@ -78,6 +78,84 @@ class MobileApiService {
     }
   }
 
+  // Get dashboard statistics
+  async getDashboardStats(token) {
+    try {
+      // Get all scans for statistics
+      const allScans = await this.getAllScans(token);
+      const allUsers = await this.getAllUsers(token);
+      const allSessions = await this.getAllSessions(token);
+
+      // Calculate statistics
+      const totalScans = allScans.data?.length || 0;
+      const totalUsers = allUsers.data?.length || 0;
+      const totalSessions = allSessions.data?.length || 0;
+
+      // Status breakdown
+      const statusBreakdown = {
+        Reparable: 0,
+        'Beyond Repair': 0,
+        Healthy: 0
+      };
+
+      allScans.data?.forEach(scan => {
+        if (statusBreakdown[scan.status] !== undefined) {
+          statusBreakdown[scan.status]++;
+        }
+      });
+
+      // Today's activity
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayScans = allScans.data?.filter(scan => 
+        new Date(scan.timestamp) >= today
+      ) || [];
+
+      // Weekly activity
+      const weekStart = new Date();
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      weekStart.setHours(0, 0, 0, 0);
+      const weeklyScans = allScans.data?.filter(scan => 
+        new Date(scan.timestamp) >= weekStart
+      ) || [];
+
+      // Department breakdown
+      const departmentStats = {};
+      allUsers.data?.forEach(user => {
+        if (!departmentStats[user.department]) {
+          departmentStats[user.department] = { users: 0, scans: 0 };
+        }
+        departmentStats[user.department].users++;
+      });
+
+      // Count scans by department
+      allScans.data?.forEach(scan => {
+        const user = allUsers.data?.find(u => u._id === scan.technician);
+        if (user && departmentStats[user.department]) {
+          departmentStats[user.department].scans++;
+        }
+      });
+
+      return {
+        overview: {
+          totalScans,
+          totalUsers,
+          totalSessions,
+          todayScans: todayScans.length,
+          weeklyScans: weeklyScans.length
+        },
+        statusBreakdown,
+        departmentStats,
+        recentActivity: {
+          lastScans: allScans.data?.slice(0, 10) || [],
+          lastSessions: allSessions.data?.slice(0, 5) || []
+        }
+      };
+    } catch (error) {
+      throw this.handleError(error, 'Failed to get dashboard stats');
+    }
+  }
+
   async getProfile(token) {
     try {
       const response = await this.client.get('/auth/profile', {
