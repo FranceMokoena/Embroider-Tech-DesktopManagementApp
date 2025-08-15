@@ -10,7 +10,7 @@ class MobileApiService {
     
     this.client = axios.create({
       baseURL: this.baseURL,
-      timeout: 15000,
+      timeout: 30000, // Increased timeout to 30 seconds
       headers: {
         'Content-Type': 'application/json'
       }
@@ -38,7 +38,8 @@ class MobileApiService {
         console.error('❌ Mobile API Response Error:', {
           status: error.response?.status,
           url: error.config?.url,
-          message: error.response?.data?.error || error.message
+          message: error.response?.data?.error || error.message,
+          code: error.code
         });
         return Promise.reject(error);
       }
@@ -394,25 +395,22 @@ class MobileApiService {
       const status = error.response.status;
       const message = error.response.data?.error || defaultMessage;
       
-      return {
-        status,
-        message,
-        details: error.response.data
-      };
+      const newError = new Error(message);
+      newError.status = status;
+      newError.details = error.response.data;
+      throw newError;
     } else if (error.request) {
       // Request was made but no response received
-      return {
-        status: 503,
-        message: 'Mobile backend is unavailable',
-        details: error.request
-      };
+      const newError = new Error('Mobile backend is unavailable');
+      newError.status = 503;
+      newError.details = error.request;
+      throw newError;
     } else {
       // Something else happened
-      return {
-        status: 500,
-        message: defaultMessage,
-        details: error.message
-      };
+      const newError = new Error(defaultMessage);
+      newError.status = 500;
+      newError.details = error.message;
+      throw newError;
     }
   }
 }
