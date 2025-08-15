@@ -12,22 +12,28 @@ const getJwtSecret = () => {
   return secret;
 };
 
-// In-memory admin user (in production, use a database)
-const ADMIN_USER = {
-  username: process.env.ADMIN_USERNAME || 'admin',
-  password: process.env.ADMIN_PASSWORD || 'admin123',
-  email: process.env.ADMIN_EMAIL || 'admin@embroiderytech.com',
-  role: 'admin'
-};
+// In-memory admin users (in production, use a database)
+let ADMIN_USERS = [
+  {
+    username: process.env.ADMIN_USERNAME || 'admin',
+    password: process.env.ADMIN_PASSWORD || 'admin123',
+    email: process.env.ADMIN_EMAIL || 'admin@embroiderytech.com',
+    role: 'admin'
+  }
+];
 
-// Hash the password once on startup
-let hashedPassword = null;
-bcrypt.hash(ADMIN_USER.password, 10).then(hash => {
-  hashedPassword = hash;
-  console.log('✅ Admin password hashed successfully');
-}).catch(err => {
-  console.error('❌ Failed to hash admin password:', err);
+// Hash passwords for all admin users
+let hashedPasswords = {};
+ADMIN_USERS.forEach(user => {
+  bcrypt.hash(user.password, 10).then(hash => {
+    hashedPasswords[user.username] = hash;
+    console.log(`✅ Admin password hashed for ${user.username}`);
+  }).catch(err => {
+    console.error(`❌ Failed to hash admin password for ${user.username}:`, err);
+  });
 });
+
+
 
 export const requireAuth = (req, res, next) => {
   try {
@@ -76,31 +82,35 @@ export const login = async (req, res) => {
       return res.status(400).json({ error: 'Username and password required' });
     }
 
-    // Check against admin user
-    if (username === ADMIN_USER.username && hashedPassword) {
-      const isValidPassword = await bcrypt.compare(password, hashedPassword);
-      
-      if (isValidPassword) {
-        const token = jwt.sign(
-          { 
-            username: ADMIN_USER.username, 
-            email: ADMIN_USER.email, 
-            role: ADMIN_USER.role 
-          },
-          getJwtSecret(),
-          { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
-        );
+    // Find admin user
+    const adminUser = ADMIN_USERS.find(user => user.username === username);
+    if (!adminUser || !hashedPasswords[username]) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
 
-        return res.json({
-          message: 'Login successful',
-          token,
-          user: {
-            username: ADMIN_USER.username,
-            email: ADMIN_USER.email,
-            role: ADMIN_USER.role
-          }
-        });
-      }
+    // Check password
+    const isValidPassword = await bcrypt.compare(password, hashedPasswords[username]);
+    
+    if (isValidPassword) {
+      const token = jwt.sign(
+        { 
+          username: adminUser.username, 
+          email: adminUser.email, 
+          role: adminUser.role 
+        },
+        getJwtSecret(),
+        { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+      );
+
+      return res.json({
+        message: 'Login successful',
+        token,
+        user: {
+          username: adminUser.username,
+          email: adminUser.email,
+          role: adminUser.role
+        }
+      });
     }
 
     return res.status(401).json({ error: 'Invalid credentials' });
@@ -121,6 +131,65 @@ export const getProfile = (req, res) => {
     });
   } catch (err) {
     console.error('❌ Get profile error:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+};
+
+export const registerAdmin = async (req, res) => {
+  try {
+    const { username, password, email, name, surname, department } = req.body;
+
+    // Validate required fields
+    if (!username || !password || !email) {
+      return res.status(400).json({ error: 'Username, password, and email are required' });
+    }
+
+    // Check if username already exists
+    const existingUser = ADMIN_USERS.find(user => user.username === username);
+    if (existingUser) {
+      return res.status(409).json({ error: 'Username already exists' });
+    }
+
+    // Check if email already exists
+    const existingEmail = ADMIN_USERS.find(user => user.email === email);
+    if (existingEmail) {
+      return res.status(409).json({ error: 'Email already exists' });
+    }
+
+    // Create new admin user
+    const newAdminUser = {
+      username,
+      password,
+      email,
+      name: name || '',
+      surname: surname || '',
+      department: department || 'Admin',
+      role: 'admin'
+    };
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    hashedPasswords[username] = hashedPassword;
+
+    // Add to admin users array
+    ADMIN_USERS.push(newAdminUser);
+
+    console.log(`✅ New admin user registered: ${username}`);
+
+    return res.status(201).json({
+      message: 'Admin user registered successfully',
+      user: {
+        username: newAdminUser.username,
+        email: newAdminUser.email,
+        name: newAdminUser.name,
+        surname: newAdminUser.surname,
+        department: newAdminUser.department,
+        role: newAdminUser.role
+      }
+    });
+
+  } catch (err) {
+    console.error('❌ Register admin error:', err);
     return res.status(500).json({ error: 'Server error' });
   }
 };

@@ -1,8 +1,11 @@
 import express from 'express';
-import { login, getProfile, requireAuth } from '../middleware/auth.js';
+import { login, getProfile, requireAuth, registerAdmin } from '../middleware/auth.js';
 import { getMobileToken } from '../controllers/adminController.js';
 
 const router = express.Router();
+
+// Admin registration
+router.post('/register', registerAdmin);
 
 // Admin login
 router.post('/login', login);
