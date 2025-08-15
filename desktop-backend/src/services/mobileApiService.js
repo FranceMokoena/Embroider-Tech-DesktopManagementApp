@@ -66,14 +66,15 @@ class MobileApiService {
     }
   }
 
-  // Get admin token for accessing mobile API
+  // Get desktop service token for accessing mobile API
   async getAdminToken() {
     try {
-      // For now, we'll use a hardcoded admin token
-      // In production, this should be obtained through proper JWT login
-      return 'franceman99'; // This will be replaced with actual JWT token
+      // Use desktop service token for full access
+      const desktopToken = process.env.MOBILE_ADMIN_TOKEN || 'franceman99';
+      console.log('🔑 Using desktop service token for full access');
+      return desktopToken;
     } catch (error) {
-      throw this.handleError(error, 'Failed to get admin token');
+      throw this.handleError(error, 'Failed to get desktop service token');
     }
   }
 
