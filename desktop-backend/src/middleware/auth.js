@@ -1,12 +1,16 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
-const JWT_SECRET = process.env.JWT_SECRET;
-
-if (!JWT_SECRET) {
-  console.error('❌ JWT_SECRET is not defined');
-  process.exit(1);
-}
+// Get JWT_SECRET from environment, but don't exit immediately if not found
+// This allows the server to start and the error will be caught when auth is actually used
+const getJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    console.error('❌ JWT_SECRET is not defined');
+    throw new Error('JWT_SECRET is not defined in environment variables');
+  }
+  return secret;
+};
 
 // In-memory admin user (in production, use a database)
 const ADMIN_USER = {
@@ -33,7 +37,7 @@ export const requireAuth = (req, res, next) => {
     }
 
     const token = auth.split(' ')[1];
-    const payload = jwt.verify(token, JWT_SECRET);
+    const payload = jwt.verify(token, getJwtSecret());
     
     if (!payload || typeof payload.username !== 'string') {
       throw new Error('Invalid token payload');
@@ -83,7 +87,7 @@ export const login = async (req, res) => {
             email: ADMIN_USER.email, 
             role: ADMIN_USER.role 
           },
-          JWT_SECRET,
+          getJwtSecret(),
           { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
         );
 

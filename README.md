@@ -1,70 +1,228 @@
-# Getting Started with Create React App
+# Embroidery Tech Desktop Management App
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A desktop application built with React and Electron that serves as an admin dashboard for the Embroidery Tech mobile application. This desktop app fetches and displays data from the mobile backend, providing administrators with comprehensive oversight of technicians, scans, sessions, and system statistics.
 
-## Available Scripts
+## 🎯 Main Purpose
 
-In the project directory, you can run:
+The primary function of this desktop application is to:
+- **Fetch data from the mobile application** and display it in a comprehensive admin dashboard
+- **Monitor technician activities** and scan history in real-time
+- **Generate reports** from mobile data (CSV, Excel, PDF)
+- **Manage users and sessions** across the mobile platform
+- **Provide analytics and statistics** from mobile scan data
 
-### `npm start`
+## 🏗️ Architecture
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+```
+Mobile App → Mobile Backend → Desktop Backend → Desktop Frontend
+```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+1. **Mobile Application**: Collects scan data, user sessions, and technician activities
+2. **Mobile Backend**: Stores and manages all mobile app data
+3. **Desktop Backend**: Acts as a bridge, fetching data from mobile backend and serving it to desktop frontend
+4. **Desktop Frontend**: Displays the data in an admin dashboard interface
 
-### `npm test`
+## 🚀 Features
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Dashboard Overview
+- **Real-time statistics** from mobile scan data
+- **Scan status breakdown** (Reparable, Beyond Repair, Healthy)
+- **Department-wise analytics**
+- **Today's and weekly activity summaries**
 
-### `npm run build`
+### Technician Management
+- **View all technicians** from mobile app
+- **Filter by department**
+- **Monitor technician performance**
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Scan History
+- **Complete scan history** from mobile app
+- **Filter by technician, department, status, and date range**
+- **Group scans by technician**
+- **Real-time scan status updates**
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Active Sessions
+- **Monitor ongoing technician sessions**
+- **Session duration and scan counts**
+- **Department-wise session tracking**
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Report Generation
+- **CSV Reports**: Export scan data, user data, and session data
+- **Excel Reports**: Formatted reports with styling
+- **PDF Reports**: Professional document generation
 
-### `npm run eject`
+## 🛠️ Setup Instructions
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### Prerequisites
+- Node.js (v14 or higher)
+- Mobile backend running and accessible
+- Mobile API credentials
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### 1. Clone and Install Dependencies
+```bash
+git clone <repository-url>
+cd embroidery-desktop
+npm install
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### 2. Configure Environment Variables
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+Create a `.env` file in the `desktop-backend` directory:
 
-## Learn More
+```bash
+cd desktop-backend
+cp env.example .env
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Edit the `.env` file with your mobile backend configuration:
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+```env
+# Mobile API Configuration
+MOBILE_API_URL=http://localhost:5000/api
+MOBILE_API_KEY=your_mobile_api_key_here
+MOBILE_ADMIN_TOKEN=your_mobile_admin_token_here
 
-### Code Splitting
+# Server Configuration
+PORT=5001
+NODE_ENV=development
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+### 3. Start the Desktop Backend
+```bash
+cd desktop-backend
+npm install
+npm start
+```
 
-### Analyzing the Bundle Size
+The desktop backend will start on `http://localhost:5001`
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+### 4. Start the Desktop Frontend
+```bash
+# In the root directory
+npm start
+```
 
-### Making a Progressive Web App
+The React app will start on `http://localhost:3000`
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+### 5. Run as Desktop App (Optional)
+```bash
+npm run dev
+```
 
-### Advanced Configuration
+This will start both the React app and Electron desktop application.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+## 📊 Data Flow
 
-### Deployment
+### Authentication Flow
+1. Admin logs into desktop app
+2. Desktop backend validates admin credentials
+3. Desktop backend retrieves mobile API token
+4. Frontend uses mobile token to fetch data
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+### Data Fetching Flow
+1. Desktop frontend requests data from desktop backend
+2. Desktop backend uses mobile token to fetch data from mobile API
+3. Desktop backend processes and formats the data
+4. Frontend receives and displays the data
 
-### `npm run build` fails to minify
+### Real-time Updates
+- Dashboard refreshes data every 30 seconds
+- Scan history updates automatically
+- Session status changes are reflected immediately
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## 🔧 API Endpoints
+
+### Desktop Backend Endpoints
+
+#### Authentication
+- `POST /api/auth/login` - Admin login
+- `GET /api/auth/profile` - Get admin profile
+- `GET /api/auth/mobile-token` - Get mobile API token
+
+#### Dashboard Data
+- `GET /api/dashboard/overview` - Dashboard statistics
+- `GET /api/dashboard/scan-history` - Scan history with filters
+- `GET /api/dashboard/users` - All technicians
+- `GET /api/dashboard/profile` - User profile
+- `GET /api/dashboard/sessions` - Active sessions
+
+#### Reports
+- `GET /api/reports/csv` - Generate CSV reports
+- `GET /api/reports/excel` - Generate Excel reports
+- `GET /api/reports/pdf` - Generate PDF reports
+
+## 📱 Mobile Integration
+
+The desktop app integrates with the mobile application through:
+
+1. **Mobile API Service** (`mobileApiService.js`): Handles all communication with mobile backend
+2. **Data Synchronization**: Real-time data fetching and caching
+3. **Error Handling**: Graceful handling of mobile backend connectivity issues
+4. **Authentication**: Secure token-based authentication with mobile backend
+
+## 🎨 UI Components
+
+### Dashboard Sections
+- **Overview**: Statistics cards and summary data
+- **Technician Management**: User list and management
+- **Scan History**: Filterable scan data with technician grouping
+- **Active Sessions**: Real-time session monitoring
+- **Notifications**: System alerts and updates
+
+### Responsive Design
+- **Desktop**: Full-featured dashboard with sidebar navigation
+- **Tablet**: Adaptive layout with collapsible sidebar
+- **Mobile**: Mobile-optimized interface
+
+## 🔒 Security
+
+- **JWT Authentication**: Secure admin authentication
+- **CORS Protection**: Configured CORS for secure cross-origin requests
+- **Rate Limiting**: API rate limiting to prevent abuse
+- **Environment Variables**: Secure configuration management
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+1. **Mobile Backend Connection Failed**
+   - Check if mobile backend is running
+   - Verify `MOBILE_API_URL` in environment variables
+   - Ensure mobile API key is correct
+
+2. **Authentication Errors**
+   - Verify admin credentials
+   - Check JWT token configuration
+   - Ensure mobile admin token is set
+
+3. **Data Not Loading**
+   - Check browser console for errors
+   - Verify mobile token is being retrieved
+   - Check network connectivity
+
+### Debug Mode
+Enable debug logging by setting `NODE_ENV=development` in the environment variables.
+
+## 📈 Future Enhancements
+
+- **Real-time WebSocket updates** for live data streaming
+- **Advanced analytics dashboard** with charts and graphs
+- **Bulk operations** for user and scan management
+- **Export scheduling** for automated report generation
+- **Mobile app integration** for push notifications
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+---
+
+**Note**: This desktop application is designed to work in conjunction with the Embroidery Tech mobile application. Ensure the mobile backend is properly configured and running before using this desktop admin dashboard.

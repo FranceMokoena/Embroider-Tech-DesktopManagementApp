@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './AdminLogin.css';
 
-// Use environment variable or fallback to deployed URL
+// Use environment variable or fallback to local development URL
 const DESKTOP_API = process.env.REACT_APP_DESKTOP_API || 'https://embroider-tech-desktopmanagementapp.onrender.com';
 
 function AdminLogin() {
@@ -19,7 +19,7 @@ function AdminLogin() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${DESKTOP_API}/api/admin/login`, {
+      const response = await fetch(`${DESKTOP_API}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
