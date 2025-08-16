@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: embroidery-tech-desktop-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 24h
+      - key: MOBILE_DB_URI
+        sync: false
+      - key: MOBILE_DB_NAME
+        value: ScreenScannerTechDetails
+      - key: MOBILE_API_URL
+        value: https://embroider-scann-app.onrender.com/api
+      - key: MOBILE_API_KEY
+        sync: false
+      - key: MOBILE_ADMIN_TOKEN
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: "*"

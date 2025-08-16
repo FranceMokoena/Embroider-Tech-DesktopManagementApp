@@ -36,14 +36,12 @@ function HomeDashboard() {
     console.log('Toggling sidebar from:', sidebarOpen, 'to:', !sidebarOpen);
     setSidebarOpen(!sidebarOpen);
   };
-
   const handleLogout = () => {
     // Clear authentication token
     localStorage.removeItem('authToken');
     // Redirect to admin login
     window.location.href = '/admin-login';
   };
-
   useEffect(() => {
     // Get token from localStorage
     const authToken = localStorage.getItem('authToken');
@@ -520,7 +518,7 @@ function HomeDashboard() {
                       {user.name ? user.name.charAt(0).toUpperCase() : 'T'}
                     </div>
                     <div className="user-info">
-                      <h3>{user.name} {user.surname}</h3>
+                      <h3>{user.technician}</h3>
                       <p className="user-email">{user.email}</p>
                       <p className="user-department">🏢 {user.department}</p>
                       <p className="user-role">👨‍💼 Technician</p>

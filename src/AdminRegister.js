@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from './context/ToastContext';
 import './AdminRegister.css';
 
 const DESKTOP_API = process.env.REACT_APP_DESKTOP_API || 'http://localhost:5001';
 
 function AdminRegister() {
   const navigate = useNavigate();
+  const { success, error, warning } = useToast();
   const [formData, setFormData] = useState({
     name: '',
     surname: '',
@@ -24,7 +26,7 @@ function AdminRegister() {
   const handleRegister = async e => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match");
+      warning("Passwords do not match. Please try again.");
       return;
     }
 
@@ -46,14 +48,16 @@ function AdminRegister() {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.error || 'Registration failed');
+        error(data.error || 'Registration failed. Please try again.');
       } else {
-        alert('Registration successful! Redirecting to login...');
-        navigate('/admin-login');
+        success('Registration successful! Redirecting to login...', 2000);
+        setTimeout(() => {
+          navigate('/admin-login');
+        }, 1500);
       }
     } catch (err) {
       console.error(err);
-      alert('Server error. Please try again later.');
+      error('Connection error. Please check your internet connection and try again.');
     } finally {
       setLoading(false);
     }

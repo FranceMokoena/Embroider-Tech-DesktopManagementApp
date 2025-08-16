@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from './context/ToastContext';
 import './AdminLogin.css';
 
 // Use environment variable or fallback to local URL
@@ -7,6 +8,7 @@ const DESKTOP_API = process.env.REACT_APP_DESKTOP_API || 'http://localhost:5001'
 
 function AdminLogin() {
   const navigate = useNavigate();
+  const { success, error } = useToast();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -28,17 +30,19 @@ function AdminLogin() {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.error || 'Login failed');
+        error(data.error || 'Login failed. Please check your credentials.');
       } else {
         localStorage.setItem('authToken', data.token);
         localStorage.setItem('adminUsername', data.user.username);
 
-        alert('Login successful! Redirecting to dashboard...');
-        navigate('/home-dashboard');
+        success('Login successful! Redirecting to dashboard...', 2000);
+        setTimeout(() => {
+          navigate('/home-dashboard');
+        }, 1500);
       }
     } catch (err) {
       console.error(err);
-      alert('Server error. Please try again later.');
+      error('Connection error. Please check your internet connection and try again.');
     } finally {
       setLoading(false);
     }
