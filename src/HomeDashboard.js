@@ -30,8 +30,19 @@ function HomeDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+  const toggleSidebar = () => {
+    console.log('Toggling sidebar from:', sidebarOpen, 'to:', !sidebarOpen);
+    setSidebarOpen(!sidebarOpen);
+  };
+
+  const handleLogout = () => {
+    // Clear authentication token
+    localStorage.removeItem('authToken');
+    // Redirect to admin login
+    window.location.href = '/admin-login';
+  };
 
   useEffect(() => {
     // Get token from localStorage
@@ -44,6 +55,20 @@ function HomeDashboard() {
       setLoading(false);
     }
   }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userDropdownOpen && !event.target.closest('.user-dropdown')) {
+        setUserDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [userDropdownOpen]);
 
   const initializeData = async (authToken) => {
     try {
@@ -210,11 +235,21 @@ function HomeDashboard() {
 
   return (
     <div className="dashboard-wrapper">
+      {/* Mobile Overlay */}
+      <div className={`mobile-overlay ${sidebarOpen ? 'active' : ''}`} onClick={toggleSidebar}></div>
+      
       <div className={`sidebar ${sidebarOpen ? 'open' : 'collapsed'}`}>
         <div className="sidebar-header">
-          <h2 className="sidebar-title">🎛️ Admin Panel</h2>
+          <div className="sidebar-brand">
+            <div className="brand-icon">⚙️</div>
+            <h2 className="sidebar-title">Admin Panel</h2>
+          </div>
           <button className="sidebar-toggle" onClick={toggleSidebar}>
-            {sidebarOpen ? '◀' : '▶'}
+            <div className={`hamburger ${sidebarOpen ? 'open' : ''}`}>
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
           </button>
         </div>
         
@@ -223,49 +258,110 @@ function HomeDashboard() {
             className={`nav-item ${activeTab === 'overview' ? 'active' : ''}`}
             onClick={() => setActiveTab('overview')}
           >
-            📊 Dashboard Overview
+            <span className="nav-icon">📊</span>
+            <span className="nav-text">Dashboard</span>
           </button>
           <button 
             className={`nav-item ${activeTab === 'users' ? 'active' : ''}`}
             onClick={() => setActiveTab('users')}
           >
-            👥 Technician Management
+            <span className="nav-icon">👥</span>
+            <span className="nav-text">Technicians</span>
           </button>
           <button 
             className={`nav-item ${activeTab === 'scans' ? 'active' : ''}`}
             onClick={() => setActiveTab('scans')}
           >
-            📱 Scan History
+            <span className="nav-icon">📱</span>
+            <span className="nav-text">Scan History</span>
           </button>
           <button 
             className={`nav-item ${activeTab === 'sessions' ? 'active' : ''}`}
             onClick={() => setActiveTab('sessions')}
           >
-            ⏱️ Active Sessions
+            <span className="nav-icon">⏱️</span>
+            <span className="nav-text">Sessions</span>
           </button>
           <button 
             className={`nav-item ${activeTab === 'notifications' ? 'active' : ''}`}
             onClick={() => setActiveTab('notifications')}
           >
-            🔔 Notifications
+            <span className="nav-icon">🔔</span>
+            <span className="nav-text">Notifications</span>
           </button>
         </nav>
+
+        <div className="sidebar-footer">
+          <div className="connection-status">
+            <div className="status-indicator online"></div>
+            <span>Live Connection</span>
+          </div>
+        </div>
       </div>
 
       <div className="main-content">
         <header className="dashboard-header">
           <div className="header-left">
-            <h1>🏭 EmbroideryTech Admin Dashboard</h1>
-            {userProfile && (
-              <p className="welcome-text">
-                Welcome back, <strong>{userProfile.username}</strong> 
-                {userProfile.department && ` (${userProfile.department})`}
-              </p>
-            )}
+            <button className="mobile-menu-btn" onClick={toggleSidebar}>
+              <div className={`hamburger ${sidebarOpen ? 'open' : ''}`}>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </button>
+            <div className="header-title">
+              <h1>🏭 EmbroideryTech Admin</h1>
+              {userProfile && (
+                <p className="welcome-text">
+                  Welcome back, <strong>{userProfile.username}</strong> 
+                  {userProfile.department && ` (${userProfile.department})`}
+                </p>
+              )}
+            </div>
           </div>
           <div className="header-right">
+            <div className="header-actions">
+              <button className="refresh-btn" onClick={() => fetchAllData(token)} title="Refresh Data">
+                🔄
+              </button>
+              <div className="notifications-dropdown">
+                <button className="notifications-btn" title="Notifications">
+                  🔔
+                  {notifications.length > 0 && (
+                    <span className="notification-badge">{notifications.length}</span>
+                  )}
+                </button>
+              </div>
+              <div className="user-dropdown">
+                <button 
+                  className="user-btn" 
+                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                >
+                  <div className="user-avatar">
+                    {userProfile?.username?.charAt(0).toUpperCase() || 'A'}
+                  </div>
+                  <span className="user-name">{userProfile?.username || 'Admin'}</span>
+                  <span className={`dropdown-arrow ${userDropdownOpen ? 'rotated' : ''}`}>▼</span>
+                </button>
+                
+                {userDropdownOpen && (
+                  <div className="user-panel">
+                    <div className="user-info">
+                      <strong>{userProfile?.username || 'Admin'}</strong>
+                      <span>{userProfile?.department || 'Administrator'}</span>
+                    </div>
+                    <div className="user-actions">
+                      <button className="logout-btn" onClick={handleLogout}>
+                        🚪 Logout
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
             <div className="last-updated">
-              Last updated: {new Date().toLocaleTimeString()}
+              <span className="update-indicator">🔄</span>
+              {new Date().toLocaleTimeString()}
             </div>
           </div>
         </header>
@@ -273,7 +369,17 @@ function HomeDashboard() {
         <div className="content-area">
           {activeTab === 'overview' && (
             <div className="overview-section">
-              <h2>📊 Dashboard Overview</h2>
+              <div className="section-header">
+                <h2>📊 Dashboard Overview</h2>
+                <div className="section-actions">
+                  <button className="export-btn">
+                    📥 Export Data
+                  </button>
+                  <button className="settings-btn">
+                    ⚙️ Settings
+                  </button>
+                </div>
+              </div>
               
               <div className="stats-grid">
                 <div className="stat-card primary">
@@ -281,6 +387,7 @@ function HomeDashboard() {
                   <div className="stat-content">
                     <h3>Total Technicians</h3>
                     <div className="stat-value">{dashboardOverview.totalUsers}</div>
+                    <div className="stat-trend positive">↗️ +12% this month</div>
                   </div>
                 </div>
                 
@@ -289,6 +396,7 @@ function HomeDashboard() {
                   <div className="stat-content">
                     <h3>Total Sessions</h3>
                     <div className="stat-value">{dashboardOverview.totalSessions}</div>
+                    <div className="stat-trend positive">↗️ +8% this week</div>
                   </div>
                 </div>
                 
@@ -297,6 +405,7 @@ function HomeDashboard() {
                   <div className="stat-content">
                     <h3>Total Scans</h3>
                     <div className="stat-value">{dashboardOverview.totalScans}</div>
+                    <div className="stat-trend positive">↗️ +15% today</div>
                   </div>
                 </div>
                 
@@ -305,6 +414,7 @@ function HomeDashboard() {
                   <div className="stat-content">
                     <h3>Today's Scans</h3>
                     <div className="stat-value">{dashboardOverview.todayScans}</div>
+                    <div className="stat-trend neutral">→ No change</div>
                   </div>
                 </div>
                 
@@ -313,6 +423,7 @@ function HomeDashboard() {
                   <div className="stat-content">
                     <h3>Weekly Scans</h3>
                     <div className="stat-value">{dashboardOverview.weeklyScans}</div>
+                    <div className="stat-trend positive">↗️ +22% this week</div>
                   </div>
                 </div>
               </div>
@@ -325,6 +436,15 @@ function HomeDashboard() {
                     <div className="status-content">
                       <h4>Healthy</h4>
                       <div className="status-value">{scanStats.healthy}</div>
+                      <div className="status-percentage">
+                        {scanStats.totalScans > 0 ? Math.round((scanStats.healthy / scanStats.totalScans) * 100) : 0}%
+                      </div>
+                      <div className="status-bar">
+                        <div 
+                          className="status-fill" 
+                          style={{width: `${scanStats.totalScans > 0 ? (scanStats.healthy / scanStats.totalScans) * 100 : 0}%`}}
+                        ></div>
+                      </div>
                     </div>
                   </div>
                   
@@ -333,6 +453,15 @@ function HomeDashboard() {
                     <div className="status-content">
                       <h4>Reparable</h4>
                       <div className="status-value">{scanStats.reparable}</div>
+                      <div className="status-percentage">
+                        {scanStats.totalScans > 0 ? Math.round((scanStats.reparable / scanStats.totalScans) * 100) : 0}%
+                      </div>
+                      <div className="status-bar">
+                        <div 
+                          className="status-fill" 
+                          style={{width: `${scanStats.totalScans > 0 ? (scanStats.reparable / scanStats.totalScans) * 100 : 0}%`}}
+                        ></div>
+                      </div>
                     </div>
                   </div>
                   
@@ -341,6 +470,15 @@ function HomeDashboard() {
                     <div className="status-content">
                       <h4>Beyond Repair</h4>
                       <div className="status-value">{scanStats.beyondRepair}</div>
+                      <div className="status-percentage">
+                        {scanStats.totalScans > 0 ? Math.round((scanStats.beyondRepair / scanStats.totalScans) * 100) : 0}%
+                      </div>
+                      <div className="status-bar">
+                        <div 
+                          className="status-fill" 
+                          style={{width: `${scanStats.totalScans > 0 ? (scanStats.beyondRepair / scanStats.totalScans) * 100 : 0}%`}}
+                        ></div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -364,7 +502,17 @@ function HomeDashboard() {
 
           {activeTab === 'users' && (
             <div className="users-section">
-              <h2>👥 Technician Management</h2>
+              <div className="section-header">
+                <h2>👥 Technician Management</h2>
+                <div className="section-actions">
+                  <button className="add-user-btn">
+                    ➕ Add Technician
+                  </button>
+                  <button className="export-btn">
+                    📥 Export List
+                  </button>
+                </div>
+              </div>
               <div className="users-grid">
                 {users.map(user => (
                   <div key={user._id} className="user-card">
@@ -377,6 +525,11 @@ function HomeDashboard() {
                       <p className="user-department">🏢 {user.department}</p>
                       <p className="user-role">👨‍💼 Technician</p>
                     </div>
+                    <div className="user-actions">
+                      <button className="action-btn edit" title="Edit">✏️</button>
+                      <button className="action-btn view" title="View Details">👁️</button>
+                      <button className="action-btn delete" title="Delete">🗑️</button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -385,23 +538,39 @@ function HomeDashboard() {
 
           {activeTab === 'scans' && (
             <div className="scans-section">
-              <h2>📱 Scan History</h2>
+              <div className="section-header">
+                <h2>📱 Scan History</h2>
+                <div className="section-actions">
+                  <button className="filter-btn">
+                    🔍 Advanced Filter
+                  </button>
+                  <button className="export-btn">
+                    📥 Export Data
+                  </button>
+                </div>
+              </div>
               
               <div className="filters">
-                <input
-                  type="text"
-                  placeholder="🔍 Filter by Technician"
-                  value={filterTechnician}
-                  onChange={e => setFilterTechnician(e.target.value)}
-                  className="filter-input"
-                />
-                <input
-                  type="text"
-                  placeholder="🏢 Filter by Department"
-                  value={filterDepartment}
-                  onChange={e => setFilterDepartment(e.target.value)}
-                  className="filter-input"
-                />
+                <div className="filter-group">
+                  <label>🔍 Filter by Technician</label>
+                  <input
+                    type="text"
+                    placeholder="Enter technician name..."
+                    value={filterTechnician}
+                    onChange={e => setFilterTechnician(e.target.value)}
+                    className="filter-input"
+                  />
+                </div>
+                <div className="filter-group">
+                  <label>🏢 Filter by Department</label>
+                  <input
+                    type="text"
+                    placeholder="Enter department name..."
+                    value={filterDepartment}
+                    onChange={e => setFilterDepartment(e.target.value)}
+                    className="filter-input"
+                  />
+                </div>
               </div>
 
               {Object.keys(groupedScans).length === 0 ? (
@@ -414,7 +583,14 @@ function HomeDashboard() {
                 <div className="scans-container">
                   {Object.entries(groupedScans).map(([technician, scans]) => (
                     <div key={technician} className="technician-scans">
-                      <h3>👨‍💼 {technician}</h3>
+                      <div className="technician-header">
+                        <h3>👨‍💼 {technician}</h3>
+                        <div className="technician-stats">
+                          <span className="stat healthy">✅ {scans.filter(s => s.status === 'Healthy').length}</span>
+                          <span className="stat reparable">🔧 {scans.filter(s => s.status === 'Reparable').length}</span>
+                          <span className="stat beyond-repair">❌ {scans.filter(s => s.status === 'Beyond Repair').length}</span>
+                        </div>
+                      </div>
                       <div className="scans-grid">
                         {scans.map((scan, idx) => (
                           <div key={idx} className="scan-card" style={{borderLeftColor: getStatusColor(scan.status)}}>
@@ -426,6 +602,11 @@ function HomeDashboard() {
                             </div>
                             <div className="scan-time">
                               📅 {new Date(scan.timestamp || scan.date).toLocaleString()}
+                            </div>
+                            <div className="scan-actions">
+                              <button className="scan-action-btn">👁️ View</button>
+                              <button className="scan-action-btn">📋 Details</button>
+                              <button className="scan-action-btn">📤 Export</button>
                             </div>
                           </div>
                         ))}
@@ -439,7 +620,17 @@ function HomeDashboard() {
 
           {activeTab === 'sessions' && (
             <div className="sessions-section">
-              <h2>⏱️ Active Sessions</h2>
+              <div className="section-header">
+                <h2>⏱️ Active Sessions</h2>
+                <div className="section-actions">
+                  <button className="filter-btn">
+                    🔍 Filter Sessions
+                  </button>
+                  <button className="export-btn">
+                    📥 Export Data
+                  </button>
+                </div>
+              </div>
               {sessions.length === 0 ? (
                 <div className="no-data">
                   <div className="no-data-icon">⏱️</div>
@@ -465,6 +656,11 @@ function HomeDashboard() {
                         )}
                         <p><strong>📱 Scan Count:</strong> {session.scanCount || 0}</p>
                       </div>
+                      <div className="session-actions">
+                        <button className="session-action-btn">👁️ View Details</button>
+                        <button className="session-action-btn">📊 Analytics</button>
+                        <button className="session-action-btn">📤 Export</button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -474,7 +670,17 @@ function HomeDashboard() {
 
           {activeTab === 'notifications' && (
             <div className="notifications-section">
-              <h2>🔔 Notifications</h2>
+              <div className="section-header">
+                <h2>🔔 Notifications</h2>
+                <div className="section-actions">
+                  <button className="mark-all-read-btn">
+                    ✅ Mark All Read
+                  </button>
+                  <button className="clear-all-btn">
+                    🗑️ Clear All
+                  </button>
+                </div>
+              </div>
               {notifications.length === 0 ? (
                 <div className="no-data">
                   <div className="no-data-icon">🔔</div>
@@ -501,7 +707,6 @@ function HomeDashboard() {
         </div>
       </div>
     </div>
-  );
-}
+  );}
 
 export default HomeDashboard;

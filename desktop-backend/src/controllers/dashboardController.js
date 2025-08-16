@@ -1,33 +1,57 @@
 // Direct database access implementation
 import databaseService from '../services/databaseService.js';
-import Technician from '../models/Technician.js';
-import TaskSession from '../models/TaskSession.js';
-import Screen from '../models/Screen.js';
 
 // Get dashboard overview data
 export const getDashboardOverview = async (req, res) => {
   try {
-    // Fetch dashboard stats directly from database
-    const [technicianStats, sessionStats, scanStats] = await Promise.all([
-      Technician.getTechnicianStats(),
-      TaskSession.getSessionStats(),
-      Screen.getScanStats()
+    const db = await databaseService.getDb();
+    
+    // Get collections
+    const usersCollection = db.collection('users');
+    const taskSessionsCollection = db.collection('tasksessions');
+    const screensCollection = db.collection('screens');
+    
+    // Fetch real data from database
+    const [totalUsers, totalSessions, totalScans, todayScans, weeklyScans, statusBreakdown, departmentStats] = await Promise.all([
+      usersCollection.countDocuments(),
+      taskSessionsCollection.countDocuments(),
+      screensCollection.countDocuments(),
+      screensCollection.countDocuments({
+        timestamp: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) }
+      }),
+      screensCollection.countDocuments({
+        timestamp: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+      }),
+      screensCollection.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+      ]).toArray(),
+      usersCollection.aggregate([
+        { $group: { _id: '$department', count: { $sum: 1 } } }
+      ]).toArray()
     ]);
+
+    // Process status breakdown
+    const statusBreakdownObj = {};
+    statusBreakdown.forEach(item => {
+      statusBreakdownObj[item._id] = item.count;
+    });
+
+    // Process department stats
+    const departmentStatsObj = {};
+    departmentStats.forEach(item => {
+      departmentStatsObj[item._id] = item.count;
+    });
 
     const overview = {
       overview: {
-        totalUsers: technicianStats.data.totalTechnicians,
-        totalSessions: sessionStats.data.totalSessions,
-        totalScans: scanStats.data.totalScans,
-        todayScans: scanStats.data.todayScans,
-        weeklyScans: scanStats.data.weeklyScans
+        totalUsers,
+        totalSessions,
+        totalScans,
+        todayScans,
+        weeklyScans
       },
-      statusBreakdown: scanStats.data.statusBreakdown,
-      departmentStats: technicianStats.data.departmentStats,
-      recentActivity: {
-        lastScans: [], // Will be populated separately if needed
-        lastSessions: [] // Will be populated separately if needed
-      }
+      statusBreakdown: statusBreakdownObj,
+      departmentStats: departmentStatsObj
     };
     
     res.json({
@@ -44,73 +68,82 @@ export const getDashboardOverview = async (req, res) => {
   }
 };
 
-  // Get scan history with statistics
-  export const getScanHistory = async (req, res) => {
-    try {
-      const { dateFrom, dateTo, department, status, technician } = req.query;
-      
-      // Build filters for database query
-      const filters = {};
-      if (dateFrom && dateTo) {
-        filters.startDate = dateFrom;
-        filters.endDate = dateTo;
-      }
-      if (department) {
-        filters.department = department;
-      }
-      if (status) {
-        filters.status = status;
-      }
-      if (technician) {
-        filters.technician = technician;
-      }
-      
-      // Fetch scans directly from database
-      const scansResponse = await Screen.getAllScans(filters);
-      const scans = scansResponse.data || [];
-      
-      // Get scan statistics
-      const scanStats = await Screen.getScanStats();
-      const stats = {
-        totalScans: scanStats.data.totalScans,
-        reparable: scanStats.data.statusBreakdown.Reparable || 0,
-        beyondRepair: scanStats.data.statusBreakdown['Beyond Repair'] || 0,
-        healthy: scanStats.data.statusBreakdown.Healthy || 0
-      };
+// Get scan history
+export const getScanHistory = async (req, res) => {
+  try {
+    const db = await databaseService.getDb();
+    const screensCollection = db.collection('screens');
+    
+    // Fetch real scan data with technician info
+    const scans = await screensCollection.aggregate([
+      {
+        $lookup: {
+          from: 'tasksessions',
+          localField: 'sessionId',
+          foreignField: '_id',
+          as: 'session'
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'session.technician',
+          foreignField: '_id',
+          as: 'technicianInfo'
+        }
+      },
+      {
+        $addFields: {
+          technician: { $arrayElemAt: ['$technicianInfo.username', 0] }
+        }
+      },
+      {
+        $project: {
+          barcode: 1,
+          status: 1,
+          technician: 1,
+          timestamp: 1,
+          date: 1
+        }
+      },
+      { $sort: { timestamp: -1 } }
+    ]).toArray();
 
-      res.json({
-        success: true,
-        stats,
-        scans
-      });
+    res.json({
+      success: true,
+      scans
+    });
 
-    } catch (error) {
-      console.error('❌ Scan history error:', error);
-      res.status(500).json({ 
-        error: 'Failed to fetch scan history',
-        details: error.message 
-      });
-    }
-  };
+  } catch (error) {
+    console.error('❌ Scan history error:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch scan history',
+      details: error.message 
+    });
+  }
+};
 
 // Get all users
 export const getUsers = async (req, res) => {
   try {
-    const { department } = req.query;
+    const db = await databaseService.getDb();
+    const usersCollection = db.collection('users');
     
-    // Build filters for database query
-    const filters = {};
-    if (department) {
-      filters.department = department;
-    }
-    
-    // Fetch technicians directly from database
-    const techniciansResponse = await Technician.getAllTechnicians(filters);
-    const technicians = techniciansResponse.data || [];
+    // Fetch real user data
+    const users = await usersCollection.find({}, {
+      projection: {
+        _id: 1,
+        username: 1,
+        name: 1,
+        surname: 1,
+        email: 1,
+        department: 1
+      }
+    }).toArray();
 
     res.json({
       success: true,
-      data: technicians
+      data: users
     });
 
   } catch (error) {
@@ -125,11 +158,6 @@ export const getUsers = async (req, res) => {
 // Get user profile
 export const getUserProfile = async (req, res) => {
   try {
-    // Get desktop service token directly
-    const token = await mobileApiService.getAdminToken();
-
-    // For now, return a default admin profile
-    // In the future, this could fetch from mobile API if needed
     const profile = {
       _id: 'desktop-admin',
       username: 'admin',
@@ -158,24 +186,46 @@ export const getUserProfile = async (req, res) => {
 // Get all sessions
 export const getSessions = async (req, res) => {
   try {
-    const { dateFrom, dateTo, department, technician } = req.query;
+    const db = await databaseService.getDb();
+    const taskSessionsCollection = db.collection('tasksessions');
     
-    // Build filters for database query
-    const filters = {};
-    if (dateFrom && dateTo) {
-      filters.startDate = dateFrom;
-      filters.endDate = dateTo;
-    }
-    if (department) {
-      filters.department = department;
-    }
-    if (technician) {
-      filters.technician = technician;
-    }
-    
-    // Fetch sessions directly from database
-    const sessionsResponse = await TaskSession.getAllSessions(filters);
-    const sessions = sessionsResponse.data || [];
+    // Fetch real session data with technician info
+    const sessions = await taskSessionsCollection.aggregate([
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'technician',
+          foreignField: '_id',
+          as: 'technicianInfo'
+        }
+      },
+      {
+        $lookup: {
+          from: 'screens',
+          localField: '_id',
+          foreignField: 'sessionId',
+          as: 'scans'
+        }
+      },
+      {
+        $addFields: {
+          technician: { $arrayElemAt: ['$technicianInfo.username', 0] },
+          department: { $arrayElemAt: ['$technicianInfo.department', 0] },
+          scanCount: { $size: '$scans' }
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          technician: 1,
+          department: 1,
+          startTime: 1,
+          endTime: 1,
+          scanCount: 1
+        }
+      },
+      { $sort: { startTime: -1 } }
+    ]).toArray();
 
     res.json({
       success: true,
@@ -194,11 +244,7 @@ export const getSessions = async (req, res) => {
 // Get notifications
 export const getNotifications = async (req, res) => {
   try {
-    // Get desktop service token directly
-    const token = await mobileApiService.getAdminToken();
-
-    // For now, return empty notifications
-    // In the future, this could fetch from mobile API if needed
+    // Empty notifications for now - can be enhanced later
     const notifications = [];
 
     res.json({

@@ -51,15 +51,15 @@ export const generatePdfReport = async (req, res) => {
 // Helper functions (will be implemented later)
 const getCsvHeaders = (type) => {
   // TODO: Implement based on data type
-  return [];
+      return [];
 };
 
 const getPdfHeaders = (type) => {
   // TODO: Implement based on data type
-  return [];
+      return [];
 };
 
 const getPdfRowData = (type, item) => {
   // TODO: Implement based on data type
-  return [];
+      return [];
 };
