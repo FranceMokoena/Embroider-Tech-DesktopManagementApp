@@ -1,17 +1,38 @@
-import mobileApiService from '../services/mobileApiService.js';
+// Direct database access implementation
+import databaseService from '../services/databaseService.js';
+import Technician from '../models/Technician.js';
+import TaskSession from '../models/TaskSession.js';
+import Screen from '../models/Screen.js';
 
 // Get dashboard overview data
 export const getDashboardOverview = async (req, res) => {
   try {
-    // Get desktop service token directly
-    const token = await mobileApiService.getAdminToken();
-    
-    // Fetch dashboard stats from mobile API
-    const stats = await mobileApiService.getDashboardStats(token);
+    // Fetch dashboard stats directly from database
+    const [technicianStats, sessionStats, scanStats] = await Promise.all([
+      Technician.getTechnicianStats(),
+      TaskSession.getSessionStats(),
+      Screen.getScanStats()
+    ]);
+
+    const overview = {
+      overview: {
+        totalUsers: technicianStats.data.totalTechnicians,
+        totalSessions: sessionStats.data.totalSessions,
+        totalScans: scanStats.data.totalScans,
+        todayScans: scanStats.data.todayScans,
+        weeklyScans: scanStats.data.weeklyScans
+      },
+      statusBreakdown: scanStats.data.statusBreakdown,
+      departmentStats: technicianStats.data.departmentStats,
+      recentActivity: {
+        lastScans: [], // Will be populated separately if needed
+        lastSessions: [] // Will be populated separately if needed
+      }
+    };
     
     res.json({
       success: true,
-      data: stats
+      data: overview
     });
 
   } catch (error) {
@@ -26,26 +47,35 @@ export const getDashboardOverview = async (req, res) => {
   // Get scan history with statistics
   export const getScanHistory = async (req, res) => {
     try {
-      // Get desktop service token directly
-      const token = await mobileApiService.getAdminToken();
-
       const { dateFrom, dateTo, department, status, technician } = req.query;
       
-      // Fetch scans from mobile API
-      const scansResponse = await mobileApiService.getAllScans(token, {
-        dateFrom,
-        dateTo,
-        department,
-        status,
-        technician
-      });
-
+      // Build filters for database query
+      const filters = {};
+      if (dateFrom && dateTo) {
+        filters.startDate = dateFrom;
+        filters.endDate = dateTo;
+      }
+      if (department) {
+        filters.department = department;
+      }
+      if (status) {
+        filters.status = status;
+      }
+      if (technician) {
+        filters.technician = technician;
+      }
+      
+      // Fetch scans directly from database
+      const scansResponse = await Screen.getAllScans(filters);
       const scans = scansResponse.data || [];
-      const stats = scansResponse.stats || {
-        totalScans: scans.length,
-        reparable: scans.filter(scan => scan.status === 'Reparable').length,
-        beyondRepair: scans.filter(scan => scan.status === 'Beyond Repair').length,
-        healthy: scans.filter(scan => scan.status === 'Healthy').length
+      
+      // Get scan statistics
+      const scanStats = await Screen.getScanStats();
+      const stats = {
+        totalScans: scanStats.data.totalScans,
+        reparable: scanStats.data.statusBreakdown.Reparable || 0,
+        beyondRepair: scanStats.data.statusBreakdown['Beyond Repair'] || 0,
+        healthy: scanStats.data.statusBreakdown.Healthy || 0
       };
 
       res.json({
@@ -66,18 +96,21 @@ export const getDashboardOverview = async (req, res) => {
 // Get all users
 export const getUsers = async (req, res) => {
   try {
-    // Get desktop service token directly
-    const token = await mobileApiService.getAdminToken();
-
     const { department } = req.query;
     
-    // Fetch users from mobile API
-    const usersResponse = await mobileApiService.getAllUsers(token, { department });
-    const users = usersResponse.data || [];
+    // Build filters for database query
+    const filters = {};
+    if (department) {
+      filters.department = department;
+    }
+    
+    // Fetch technicians directly from database
+    const techniciansResponse = await Technician.getAllTechnicians(filters);
+    const technicians = techniciansResponse.data || [];
 
     res.json({
       success: true,
-      data: users
+      data: technicians
     });
 
   } catch (error) {
@@ -125,18 +158,23 @@ export const getUserProfile = async (req, res) => {
 // Get all sessions
 export const getSessions = async (req, res) => {
   try {
-    // Get desktop service token directly
-    const token = await mobileApiService.getAdminToken();
-
     const { dateFrom, dateTo, department, technician } = req.query;
     
-    // Fetch sessions from mobile API
-    const sessionsResponse = await mobileApiService.getAllSessions(token, {
-      dateFrom,
-      dateTo,
-      department,
-      technician
-    });
+    // Build filters for database query
+    const filters = {};
+    if (dateFrom && dateTo) {
+      filters.startDate = dateFrom;
+      filters.endDate = dateTo;
+    }
+    if (department) {
+      filters.department = department;
+    }
+    if (technician) {
+      filters.technician = technician;
+    }
+    
+    // Fetch sessions directly from database
+    const sessionsResponse = await TaskSession.getAllSessions(filters);
     const sessions = sessionsResponse.data || [];
 
     res.json({

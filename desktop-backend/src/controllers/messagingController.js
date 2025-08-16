@@ -1,5 +1,5 @@
-import mobileApiService from '../services/mobileApiService.js';
 import moment from 'moment';
+// TODO: Implement direct database access
 
 // In-memory message storage (in production, use a database)
 let messages = [];

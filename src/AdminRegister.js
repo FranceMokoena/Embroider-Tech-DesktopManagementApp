@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './AdminRegister.css';
 
-const DESKTOP_API = process.env.REACT_APP_DESKTOP_API || 'https://embroider-tech-desktopmanagementapp.onrender.com';
+const DESKTOP_API = process.env.REACT_APP_DESKTOP_API || 'http://localhost:5001';
 
 function AdminRegister() {
   const navigate = useNavigate();

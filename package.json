@@ -2,20 +2,25 @@
   "name": "embroidery-desktop",
   "version": "1.0.0",
   "description": "EmbroideryTech Desktop Management Application",
-  "main": "desktop-backend/src/server.js",
+  "main": "src/main.js",
   "scripts": {
-    "start": "cd desktop-backend && npm start",
-    "dev": "cd desktop-backend && npm run dev",
-    "install-backend": "cd desktop-backend && npm install",
-    "install-frontend": "npm install",
-    "build": "npm run install-backend && npm run install-frontend",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "electron": "npx electron .",
+    "electron-dev": "concurrently \"npm start\" \"wait-on http://localhost:3000 && npm run electron\"",
+    "backend": "cd desktop-backend && npm start",
+    "dev": "concurrently \"npm run backend\" \"npm run electron-dev\"",
+    "install-all": "npm install && cd desktop-backend && npm install"
   },
   "dependencies": {
     "electron": "^28.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-scripts": "5.0.1"
+    "react-scripts": "5.0.1",
+    "concurrently": "^8.2.2",
+    "wait-on": "^7.2.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^5.16.4",

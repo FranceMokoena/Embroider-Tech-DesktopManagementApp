@@ -1,5 +1,5 @@
-import mobileApiService from '../services/mobileApiService.js';
 import moment from 'moment';
+// Direct database access will be implemented here
 
 // Get mobile token for desktop frontend
 export const getMobileToken = async (req, res) => {
@@ -29,80 +29,30 @@ export const getMobileToken = async (req, res) => {
 // Dashboard Overview
 export const getDashboardStats = async (req, res) => {
   try {
-    const token = req.headers['mobile-token'];
-    if (!token) {
-      return res.status(401).json({ error: 'Mobile backend token required' });
-    }
-
-    // Get all scans for statistics
-    const allScans = await mobileApiService.getAllScans(token);
-    const allUsers = await mobileApiService.getAllUsers(token);
-    const allSessions = await mobileApiService.getAllSessions(token);
-
-    // Calculate statistics
-    const totalScans = allScans.data?.length || 0;
-    const totalUsers = allUsers.data?.length || 0;
-    const totalSessions = allSessions.data?.length || 0;
-
-    // Status breakdown
-    const statusBreakdown = {
+    // TODO: Implement direct database access
+    res.json({
+      success: true,
+      data: {
+        overview: {
+          totalScans: 0,
+          totalUsers: 0,
+          totalSessions: 0,
+          todayScans: 0,
+          weeklyScans: 0
+        },
+        statusBreakdown: {
       Reparable: 0,
       'Beyond Repair': 0,
       Healthy: 0
-    };
-
-    allScans.data?.forEach(scan => {
-      if (statusBreakdown[scan.status] !== undefined) {
-        statusBreakdown[scan.status]++;
+        },
+        departmentStats: {},
+        recentActivity: {
+          lastScans: [],
+          lastSessions: []
+        }
       }
     });
-
-    // Today's activity
-    const today = moment().startOf('day');
-    const todayScans = allScans.data?.filter(scan => 
-      moment(scan.timestamp).isSame(today, 'day')
-    ) || [];
-
-    // Weekly activity
-    const weekStart = moment().startOf('week');
-    const weeklyScans = allScans.data?.filter(scan => 
-      moment(scan.timestamp).isSameOrAfter(weekStart)
-    ) || [];
-
-    // Department breakdown
-    const departmentStats = {};
-    allUsers.data?.forEach(user => {
-      if (!departmentStats[user.department]) {
-        departmentStats[user.department] = { users: 0, scans: 0 };
-      }
-      departmentStats[user.department].users++;
-    });
-
-    // Count scans by department
-    allScans.data?.forEach(scan => {
-      const user = allUsers.data?.find(u => u._id === scan.userId);
-      if (user && departmentStats[user.department]) {
-        departmentStats[user.department].scans++;
-      }
-    });
-
-    const stats = {
-      overview: {
-        totalScans,
-        totalUsers,
-        totalSessions,
-        todayScans: todayScans.length,
-        weeklyScans: weeklyScans.length
-      },
-      statusBreakdown,
-      departmentStats,
-      recentActivity: {
-        lastScans: allScans.data?.slice(0, 10) || [],
-        lastSessions: allSessions.data?.slice(0, 5) || []
-      }
-    };
-
-    return res.json(stats);
+    return;
   } catch (error) {
     console.error('❌ Dashboard stats error:', error);
     return res.status(500).json({ error: 'Failed to fetch dashboard statistics' });
@@ -112,16 +62,11 @@ export const getDashboardStats = async (req, res) => {
 // User Management
 export const getAllUsers = async (req, res) => {
   try {
-    const token = req.headers['mobile-token'];
-    if (!token) {
-      return res.status(401).json({ error: 'Mobile backend token required' });
-    }
-
-    const { department, q, page = 1, limit = 50 } = req.query;
-    const filters = { department, q, page, limit };
-
-    const result = await mobileApiService.getAllUsers(token, filters);
-    return res.json(result);
+    // TODO: Implement direct database access
+    res.json({
+      success: true,
+      data: []
+    });
   } catch (error) {
     console.error('❌ Get all users error:', error);
     return res.status(500).json({ error: 'Failed to fetch users' });

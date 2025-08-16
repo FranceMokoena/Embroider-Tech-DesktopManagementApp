@@ -1,11 +1,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import './HomeDashboard.css';
 
-const DESKTOP_API = process.env.REACT_APP_DESKTOP_API || 'https://embroider-tech-desktopmanagementapp.onrender.com';
+const DESKTOP_API = process.env.REACT_APP_DESKTOP_API || 'http://localhost:5001';
 
-function HomeDashboard({ token: initialToken }) {
-  const [token, setToken] = useState(initialToken || '');
-  const [mobileToken, setMobileToken] = useState('');
+function HomeDashboard() {
+  const [token, setToken] = useState('');
   const [userProfile, setUserProfile] = useState(null);
   const [scanStats, setScanStats] = useState({
     totalScans: 0,
@@ -13,6 +12,14 @@ function HomeDashboard({ token: initialToken }) {
     beyondRepair: 0,
     healthy: 0
   });
+  const [dashboardOverview, setDashboardOverview] = useState({
+    totalUsers: 0,
+    totalSessions: 0,
+    totalScans: 0,
+    todayScans: 0,
+    weeklyScans: 0
+  });
+  const [departmentStats, setDepartmentStats] = useState({});
   const [scanHistory, setScanHistory] = useState([]);
   const [users, setUsers] = useState([]);
   const [sessions, setSessions] = useState([]);
@@ -22,102 +29,92 @@ function HomeDashboard({ token: initialToken }) {
   const [filterDepartment, setFilterDepartment] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   useEffect(() => {
-    const savedToken = initialToken || localStorage.getItem('authToken');
-    if (savedToken) {
-      setToken(savedToken);
-      // Get mobile token from desktop backend
-      getMobileToken(savedToken);
+    // Get token from localStorage
+    const authToken = localStorage.getItem('authToken');
+    if (authToken) {
+      setToken(authToken);
+      initializeData(authToken);
+    } else {
+      setError('No authentication token found. Please login again.');
+      setLoading(false);
     }
-  }, [initialToken]);
+  }, []);
 
-  const authFetch = async (url, options = {}) => {
-    if (!token) throw new Error('No JWT token found');
-    return fetch(url, {
-      ...options,
-      headers: {
-        ...options.headers,
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-  };
-
-  // Get mobile token from desktop backend
-  const getMobileToken = async (desktopToken) => {
+  const initializeData = async (authToken) => {
     try {
-      const response = await fetch(`${DESKTOP_API}/api/auth/mobile-token`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${desktopToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setMobileToken(data.mobileToken);
-        // Fetch data once we have the mobile token
-        fetchAllData(data.mobileToken);
-      } else {
-        console.error('Failed to get mobile token');
-        setError('Failed to connect to mobile backend');
-      }
+      fetchAllData(authToken);
     } catch (err) {
-      console.error('Error getting mobile token:', err);
+      console.error('Error initializing data:', err);
       setError('Connection error');
     }
   };
 
-  // Fetch all data from mobile API through desktop backend
-  const fetchAllData = async (mobileToken) => {
+  const fetchAllData = async (authToken) => {
     try {
       setLoading(true);
       setError(null);
 
-      // Fetch data in parallel
-      const [profileRes, scanHistoryRes, usersRes, sessionsRes, notificationsRes] = await Promise.all([
+      const [overviewRes, profileRes, scanHistoryRes, usersRes, sessionsRes, notificationsRes] = await Promise.all([
+        fetch(`${DESKTOP_API}/api/dashboard/overview`, {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
+          }
+        }),
         fetch(`${DESKTOP_API}/api/dashboard/profile`, {
           headers: {
-            Authorization: `Bearer ${token}`,
-            'mobile-token': mobileToken,
+            Authorization: `Bearer ${authToken}`,
             'Content-Type': 'application/json'
           }
         }),
         fetch(`${DESKTOP_API}/api/dashboard/scan-history`, {
           headers: {
-            Authorization: `Bearer ${token}`,
-            'mobile-token': mobileToken,
+            Authorization: `Bearer ${authToken}`,
             'Content-Type': 'application/json'
           }
         }),
         fetch(`${DESKTOP_API}/api/dashboard/users`, {
           headers: {
-            Authorization: `Bearer ${token}`,
-            'mobile-token': mobileToken,
+            Authorization: `Bearer ${authToken}`,
             'Content-Type': 'application/json'
           }
         }),
         fetch(`${DESKTOP_API}/api/dashboard/sessions`, {
           headers: {
-            Authorization: `Bearer ${token}`,
-            'mobile-token': mobileToken,
+            Authorization: `Bearer ${authToken}`,
             'Content-Type': 'application/json'
           }
         }),
         fetch(`${DESKTOP_API}/api/dashboard/notifications`, {
           headers: {
-            Authorization: `Bearer ${token}`,
-            'mobile-token': mobileToken,
+            Authorization: `Bearer ${authToken}`,
             'Content-Type': 'application/json'
           }
         })
       ]);
 
-      // Process responses
+      if (overviewRes.ok) {
+        const overviewData = await overviewRes.json();
+        const overview = overviewData.data.overview;
+        const statusBreakdown = overviewData.data.statusBreakdown;
+        const deptStats = overviewData.data.departmentStats;
+        
+        setDashboardOverview(overview);
+        setDepartmentStats(deptStats);
+        
+        setScanStats({
+          totalScans: overview.totalScans,
+          reparable: statusBreakdown.Reparable || 0,
+          beyondRepair: statusBreakdown['Beyond Repair'] || 0,
+          healthy: statusBreakdown.Healthy || 0
+        });
+      }
+
       if (profileRes.ok) {
         const profileData = await profileRes.json();
         setUserProfile(profileData.data);
@@ -125,7 +122,6 @@ function HomeDashboard({ token: initialToken }) {
 
       if (scanHistoryRes.ok) {
         const scanData = await scanHistoryRes.json();
-        setScanStats(scanData.stats);
         setScanHistory(scanData.scans);
       }
 
@@ -146,75 +142,17 @@ function HomeDashboard({ token: initialToken }) {
 
     } catch (err) {
       console.error('Error fetching data:', err);
-      setError('Failed to fetch data from mobile backend');
+      setError('Failed to fetch data from database');
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch functions (keeping for backward compatibility)
-  const fetchUserProfile = async () => {
-    try {
-      const res = await authFetch(`${DESKTOP_API}/api/auth/profile`);
-      if (!res.ok) return console.error('Failed to fetch profile', res.status);
-      const data = await res.json();
-      setUserProfile(data);
-    } catch (err) {
-      console.error('Error fetching profile', err);
-    }
-  };
-
-  const fetchScanHistory = async () => {
-    try {
-      const res = await authFetch(`${DESKTOP_API}/api/scan-history`);
-      if (!res.ok) return console.error('Failed to fetch scan history', res.status);
-      const data = await res.json();
-      setScanStats(data.stats || { totalScans: 0, reparable: 0, beyondRepair: 0, healthy: 0 });
-      setScanHistory(data.scans || []);
-    } catch (err) {
-      console.error('Error fetching scan history', err);
-    }
-  };
-
-  const fetchUsers = async () => {
-    try {
-      const res = await authFetch(`${DESKTOP_API}/api/admin/users`);
-      if (!res.ok) return console.error('Failed to fetch users', res.status);
-      const data = await res.json();
-      setUsers(data || []);
-    } catch (err) {
-      console.error('Error fetching users', err);
-    }
-  };
-
-  const fetchNotifications = async () => {
-    try {
-      const res = await authFetch(`${DESKTOP_API}/api/messaging/notifications`);
-      if (!res.ok) return console.error('Failed to fetch notifications', res.status);
-      const data = await res.json();
-      setNotifications(data || []);
-    } catch (err) {
-      console.error('Error fetching notifications', err);
-    }
-  };
-
-  // Remove the old useEffect since we now fetch data when we get the mobile token
-  // useEffect(() => {
-  //   if (!token) return;
-  //   fetchUserProfile();
-  //   fetchScanHistory();
-  //   fetchUsers();
-  //   fetchNotifications();
-  //   const interval = setInterval(fetchNotifications, 30000);
-  //   return () => clearInterval(interval);
-  // }, [token]);
-
-  // Filtered & grouped scans by technician
   const groupedScans = useMemo(() => {
     const filtered = scanHistory.filter(scan => {
-      const techMatch = filterTechnician ? scan.technician.includes(filterTechnician) : true;
+      const techMatch = filterTechnician ? scan.technician?.includes(filterTechnician) : true;
       const deptMatch = filterDepartment
-        ? users.find(u => `${u.name} ${u.surname}` === scan.technician)?.department.includes(filterDepartment)
+        ? users.find(u => `${u.name} ${u.surname}` === scan.technician)?.department?.includes(filterDepartment)
         : true;
       return techMatch && deptMatch;
     });
@@ -226,12 +164,31 @@ function HomeDashboard({ token: initialToken }) {
     }, {});
   }, [scanHistory, filterTechnician, filterDepartment, users]);
 
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Reparable': return '#ff9800';
+      case 'Beyond Repair': return '#f44336';
+      case 'Healthy': return '#4caf50';
+      default: return '#9e9e9e';
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'Reparable': return '🔧';
+      case 'Beyond Repair': return '❌';
+      case 'Healthy': return '✅';
+      default: return '❓';
+    }
+  };
+
   if (loading) {
     return (
       <div className="dashboard-wrapper">
         <div className="loading-container">
-          <h2>Loading Dashboard Data...</h2>
-          <p>Fetching data from mobile application...</p>
+          <div className="loading-spinner"></div>
+          <h2>🔄 Loading Dashboard Data...</h2>
+          <p>Fetching real-time data from database...</p>
         </div>
       </div>
     );
@@ -241,9 +198,11 @@ function HomeDashboard({ token: initialToken }) {
     return (
       <div className="dashboard-wrapper">
         <div className="error-container">
-          <h2>Error Loading Dashboard</h2>
+          <h2>❌ Error Loading Dashboard</h2>
           <p>{error}</p>
-          <button onClick={() => window.location.reload()}>Retry</button>
+          <button onClick={() => window.location.reload()} className="retry-btn">
+            🔄 Retry
+          </button>
         </div>
       </div>
     );
@@ -252,112 +211,294 @@ function HomeDashboard({ token: initialToken }) {
   return (
     <div className="dashboard-wrapper">
       <div className={`sidebar ${sidebarOpen ? 'open' : 'collapsed'}`}>
-        <h2 className="sidebar-title">Admin Menu</h2>
-        <a href="#overview">Dashboard Overview</a>
-        <a href="#users">Technician Management</a>
-        <a href="#scans">Scan History</a>
-        <a href="#sessions">Active Sessions</a>
-        <a href="#notifications">Notifications</a>
+        <div className="sidebar-header">
+          <h2 className="sidebar-title">🎛️ Admin Panel</h2>
+          <button className="sidebar-toggle" onClick={toggleSidebar}>
+            {sidebarOpen ? '◀' : '▶'}
+          </button>
+        </div>
+        
+        <nav className="sidebar-nav">
+          <button 
+            className={`nav-item ${activeTab === 'overview' ? 'active' : ''}`}
+            onClick={() => setActiveTab('overview')}
+          >
+            📊 Dashboard Overview
+          </button>
+          <button 
+            className={`nav-item ${activeTab === 'users' ? 'active' : ''}`}
+            onClick={() => setActiveTab('users')}
+          >
+            👥 Technician Management
+          </button>
+          <button 
+            className={`nav-item ${activeTab === 'scans' ? 'active' : ''}`}
+            onClick={() => setActiveTab('scans')}
+          >
+            📱 Scan History
+          </button>
+          <button 
+            className={`nav-item ${activeTab === 'sessions' ? 'active' : ''}`}
+            onClick={() => setActiveTab('sessions')}
+          >
+            ⏱️ Active Sessions
+          </button>
+          <button 
+            className={`nav-item ${activeTab === 'notifications' ? 'active' : ''}`}
+            onClick={() => setActiveTab('notifications')}
+          >
+            🔔 Notifications
+          </button>
+        </nav>
       </div>
 
       <div className="main-content">
         <header className="dashboard-header">
-          <button className="sidebar-toggle" onClick={toggleSidebar}>
-            {sidebarOpen ? '❮' : '❯'}
-          </button>
-          <h1>EmbroideryTech Admin Dashboard</h1>
-          {userProfile && (
-            <p>
-              Welcome, {userProfile.username} ({userProfile.department || 'Admin'})
-            </p>
-          )}
+          <div className="header-left">
+            <h1>🏭 EmbroideryTech Admin Dashboard</h1>
+            {userProfile && (
+              <p className="welcome-text">
+                Welcome back, <strong>{userProfile.username}</strong> 
+                {userProfile.department && ` (${userProfile.department})`}
+              </p>
+            )}
+          </div>
+          <div className="header-right">
+            <div className="last-updated">
+              Last updated: {new Date().toLocaleTimeString()}
+            </div>
+          </div>
         </header>
 
-        <section id="overview">
-          <h2>Overview</h2>
-          <p>Total Scans: {scanStats.totalScans}</p>
-          <p>Reparable Screens: {scanStats.reparable}</p>
-          <p>Beyond Repair: {scanStats.beyondRepair}</p>
-          <p>Healthy Screens: {scanStats.healthy}</p>
-        </section>
-
-        <section id="users">
-          <h2>Technicians</h2>
-          <ul>
-            {users.map(u => (
-              <li key={u._id}>
-                {u.name} {u.surname} - {u.department}
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section id="scans">
-          <h2>Scan History</h2>
-          <div className="filters">
-            <input
-              type="text"
-              placeholder="Filter by Technician"
-              value={filterTechnician}
-              onChange={e => setFilterTechnician(e.target.value)}
-            />
-            <input
-              type="text"
-              placeholder="Filter by Department"
-              value={filterDepartment}
-              onChange={e => setFilterDepartment(e.target.value)}
-            />
-          </div>
-
-          {Object.keys(groupedScans).length === 0 && <p>No scans found for selected filters.</p>}
-
-          {Object.entries(groupedScans).map(([technician, scans]) => (
-            <div key={technician} className="technician-group">
-              <h3>{technician}</h3>
-              <ul>
-                {scans.map((scan, idx) => (
-                  <li key={idx}>
-                    {scan.barcode} - {scan.status} ({new Date(scan.timestamp || scan.date).toLocaleString()})
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </section>
-
-        <section id="sessions">
-          <h2>Active Sessions</h2>
-          {sessions.length === 0 ? (
-            <p>No active sessions found.</p>
-          ) : (
-            <div className="sessions-grid">
-              {sessions.map((session, idx) => (
-                <div key={idx} className="session-card">
-                  <h3>Session {session._id?.slice(-8) || idx + 1}</h3>
-                  <p><strong>Technician:</strong> {session.technician}</p>
-                  <p><strong>Department:</strong> {session.department}</p>
-                  <p><strong>Start Time:</strong> {new Date(session.startTime).toLocaleString()}</p>
-                  <p><strong>Status:</strong> {session.endTime ? 'Completed' : 'Active'}</p>
-                  {session.endTime && (
-                    <p><strong>End Time:</strong> {new Date(session.endTime).toLocaleString()}</p>
-                  )}
-                  <p><strong>Scan Count:</strong> {session.scanCount || 0}</p>
+        <div className="content-area">
+          {activeTab === 'overview' && (
+            <div className="overview-section">
+              <h2>📊 Dashboard Overview</h2>
+              
+              <div className="stats-grid">
+                <div className="stat-card primary">
+                  <div className="stat-icon">👥</div>
+                  <div className="stat-content">
+                    <h3>Total Technicians</h3>
+                    <div className="stat-value">{dashboardOverview.totalUsers}</div>
+                  </div>
                 </div>
-              ))}
+                
+                <div className="stat-card success">
+                  <div className="stat-icon">📋</div>
+                  <div className="stat-content">
+                    <h3>Total Sessions</h3>
+                    <div className="stat-value">{dashboardOverview.totalSessions}</div>
+                  </div>
+                </div>
+                
+                <div className="stat-card info">
+                  <div className="stat-icon">📱</div>
+                  <div className="stat-content">
+                    <h3>Total Scans</h3>
+                    <div className="stat-value">{dashboardOverview.totalScans}</div>
+                  </div>
+                </div>
+                
+                <div className="stat-card warning">
+                  <div className="stat-icon">📅</div>
+                  <div className="stat-content">
+                    <h3>Today's Scans</h3>
+                    <div className="stat-value">{dashboardOverview.todayScans}</div>
+                  </div>
+                </div>
+                
+                <div className="stat-card secondary">
+                  <div className="stat-icon">📈</div>
+                  <div className="stat-content">
+                    <h3>Weekly Scans</h3>
+                    <div className="stat-value">{dashboardOverview.weeklyScans}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="scan-breakdown">
+                <h3>📊 Scan Status Breakdown</h3>
+                <div className="status-cards">
+                  <div className="status-card healthy">
+                    <div className="status-icon">✅</div>
+                    <div className="status-content">
+                      <h4>Healthy</h4>
+                      <div className="status-value">{scanStats.healthy}</div>
+                    </div>
+                  </div>
+                  
+                  <div className="status-card reparable">
+                    <div className="status-icon">🔧</div>
+                    <div className="status-content">
+                      <h4>Reparable</h4>
+                      <div className="status-value">{scanStats.reparable}</div>
+                    </div>
+                  </div>
+                  
+                  <div className="status-card beyond-repair">
+                    <div className="status-icon">❌</div>
+                    <div className="status-content">
+                      <h4>Beyond Repair</h4>
+                      <div className="status-value">{scanStats.beyondRepair}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {Object.keys(departmentStats).length > 0 && (
+                <div className="department-stats">
+                  <h3>🏢 Department Statistics</h3>
+                  <div className="department-grid">
+                    {Object.entries(departmentStats).map(([dept, count]) => (
+                      <div key={dept} className="department-card">
+                        <div className="department-name">{dept}</div>
+                        <div className="department-count">{count} technicians</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
-        </section>
 
-        <section id="notifications">
-          <h2>Notifications</h2>
-          <ul>
-            {notifications.map((note, idx) => (
-              <li key={idx}>
-                {note.message} ({new Date(note.date || note.timestamp).toLocaleString()})
-              </li>
-            ))}
-          </ul>
-        </section>
+          {activeTab === 'users' && (
+            <div className="users-section">
+              <h2>👥 Technician Management</h2>
+              <div className="users-grid">
+                {users.map(user => (
+                  <div key={user._id} className="user-card">
+                    <div className="user-avatar">
+                      {user.name ? user.name.charAt(0).toUpperCase() : 'T'}
+                    </div>
+                    <div className="user-info">
+                      <h3>{user.name} {user.surname}</h3>
+                      <p className="user-email">{user.email}</p>
+                      <p className="user-department">🏢 {user.department}</p>
+                      <p className="user-role">👨‍💼 Technician</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'scans' && (
+            <div className="scans-section">
+              <h2>📱 Scan History</h2>
+              
+              <div className="filters">
+                <input
+                  type="text"
+                  placeholder="🔍 Filter by Technician"
+                  value={filterTechnician}
+                  onChange={e => setFilterTechnician(e.target.value)}
+                  className="filter-input"
+                />
+                <input
+                  type="text"
+                  placeholder="🏢 Filter by Department"
+                  value={filterDepartment}
+                  onChange={e => setFilterDepartment(e.target.value)}
+                  className="filter-input"
+                />
+              </div>
+
+              {Object.keys(groupedScans).length === 0 ? (
+                <div className="no-data">
+                  <div className="no-data-icon">📱</div>
+                  <h3>No scans found</h3>
+                  <p>When technicians perform scans, they will appear here.</p>
+                </div>
+              ) : (
+                <div className="scans-container">
+                  {Object.entries(groupedScans).map(([technician, scans]) => (
+                    <div key={technician} className="technician-scans">
+                      <h3>👨‍💼 {technician}</h3>
+                      <div className="scans-grid">
+                        {scans.map((scan, idx) => (
+                          <div key={idx} className="scan-card" style={{borderLeftColor: getStatusColor(scan.status)}}>
+                            <div className="scan-header">
+                              <span className="scan-barcode">📋 {scan.barcode}</span>
+                              <span className="scan-status" style={{color: getStatusColor(scan.status)}}>
+                                {getStatusIcon(scan.status)} {scan.status}
+                              </span>
+                            </div>
+                            <div className="scan-time">
+                              📅 {new Date(scan.timestamp || scan.date).toLocaleString()}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'sessions' && (
+            <div className="sessions-section">
+              <h2>⏱️ Active Sessions</h2>
+              {sessions.length === 0 ? (
+                <div className="no-data">
+                  <div className="no-data-icon">⏱️</div>
+                  <h3>No active sessions</h3>
+                  <p>When technicians start scanning sessions, they will appear here.</p>
+                </div>
+              ) : (
+                <div className="sessions-grid">
+                  {sessions.map((session, idx) => (
+                    <div key={idx} className="session-card">
+                      <div className="session-header">
+                        <h3>📋 Session {session._id?.slice(-8) || idx + 1}</h3>
+                        <span className={`session-status ${session.endTime ? 'completed' : 'active'}`}>
+                          {session.endTime ? '✅ Completed' : '🔄 Active'}
+                        </span>
+                      </div>
+                      <div className="session-details">
+                        <p><strong>👨‍💼 Technician:</strong> {session.technician}</p>
+                        <p><strong>🏢 Department:</strong> {session.department}</p>
+                        <p><strong>🕐 Start Time:</strong> {new Date(session.startTime).toLocaleString()}</p>
+                        {session.endTime && (
+                          <p><strong>🕐 End Time:</strong> {new Date(session.endTime).toLocaleString()}</p>
+                        )}
+                        <p><strong>📱 Scan Count:</strong> {session.scanCount || 0}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'notifications' && (
+            <div className="notifications-section">
+              <h2>🔔 Notifications</h2>
+              {notifications.length === 0 ? (
+                <div className="no-data">
+                  <div className="no-data-icon">🔔</div>
+                  <h3>No notifications</h3>
+                  <p>System notifications will appear here.</p>
+                </div>
+              ) : (
+                <div className="notifications-list">
+                  {notifications.map((note, idx) => (
+                    <div key={idx} className="notification-card">
+                      <div className="notification-icon">📢</div>
+                      <div className="notification-content">
+                        <p>{note.message}</p>
+                        <span className="notification-time">
+                          {new Date(note.date || note.timestamp).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

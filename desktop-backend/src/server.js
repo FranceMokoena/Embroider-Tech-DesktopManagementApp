@@ -11,6 +11,7 @@ import adminRoutes from './routes/admin.js';
 import reportsRoutes from './routes/reports.js';
 import messagingRoutes from './routes/messaging.js';
 import dashboardRoutes from './routes/dashboard.js';
+import databaseRoutes from './routes/database.js';
 
 dotenv.config();
 
@@ -33,6 +34,8 @@ app.use(limiter);
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
   'http://localhost:3000',
   'http://localhost:3001',
+  'http://localhost:3002',
+  'http://localhost:3003',
   'http://localhost:19006'
 ];
 
@@ -65,6 +68,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/messaging', messagingRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/database', databaseRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

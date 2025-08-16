@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './AdminLogin.css';
 
-// Use environment variable or fallback to production URL
-const DESKTOP_API = process.env.REACT_APP_DESKTOP_API || 'https://embroider-tech-desktopmanagementapp.onrender.com';
+// Use environment variable or fallback to local URL
+const DESKTOP_API = process.env.REACT_APP_DESKTOP_API || 'http://localhost:5001';
 
 function AdminLogin() {
   const navigate = useNavigate();
