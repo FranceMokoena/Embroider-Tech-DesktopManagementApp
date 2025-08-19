@@ -85,6 +85,12 @@ export const getScanHistory = async (req, res) => {
         }
       },
       {
+        $unwind: {
+          path: '$session',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
         $lookup: {
           from: 'users',
           localField: 'session.technician',
@@ -93,8 +99,15 @@ export const getScanHistory = async (req, res) => {
         }
       },
       {
+        $unwind: {
+          path: '$technicianInfo',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
         $addFields: {
-          technician: { $arrayElemAt: ['$technicianInfo.username', 0] }
+          technician: '$technicianInfo.username',
+          department: '$technicianInfo.department'
         }
       },
       {
@@ -102,6 +115,7 @@ export const getScanHistory = async (req, res) => {
           barcode: 1,
           status: 1,
           technician: 1,
+          department: 1,
           timestamp: 1,
           date: 1
         }

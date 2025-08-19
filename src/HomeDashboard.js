@@ -31,6 +31,11 @@ function HomeDashboard() {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
+  const [selectedNotificationView, setSelectedNotificationView] = useState(null);
+  const [notificationsViewed, setNotificationsViewed] = useState(false);
+  const [scanModalOpen, setScanModalOpen] = useState(false);
+  const [selectedScan, setSelectedScan] = useState(null);
 
   const toggleSidebar = () => {
     console.log('Toggling sidebar from:', sidebarOpen, 'to:', !sidebarOpen);
@@ -60,13 +65,25 @@ function HomeDashboard() {
       if (userDropdownOpen && !event.target.closest('.user-dropdown')) {
         setUserDropdownOpen(false);
       }
+      if (notificationDropdownOpen && !event.target.closest('.notifications-dropdown')) {
+        setNotificationDropdownOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [userDropdownOpen]);
+  }, [userDropdownOpen, notificationDropdownOpen]);
+
+  // Reset notifications viewed when new scan data is detected
+  useEffect(() => {
+    if (generateNotifications.length > 0 && notificationsViewed) {
+      // Simple check: if we have notifications and they were viewed, 
+      // reset when scan history changes (indicating new activity)
+      setNotificationsViewed(false);
+    }
+  }, [scanHistory.length]); // Only depend on scan count changes
 
   const initializeData = async (authToken) => {
     try {
@@ -145,11 +162,19 @@ function HomeDashboard() {
 
       if (scanHistoryRes.ok) {
         const scanData = await scanHistoryRes.json();
-        setScanHistory(scanData.scans);
+        const newScanHistory = scanData.scans;
+        console.log('🔍 Scan History Data:', newScanHistory);
+        setScanHistory(newScanHistory);
+        
+        // Check if there are new scans (simple check - if scan count changed)
+        if (newScanHistory.length !== scanHistory.length) {
+          setNotificationsViewed(false);
+        }
       }
 
       if (usersRes.ok) {
         const usersData = await usersRes.json();
+        console.log('👥 Users Data:', usersData.data);
         setUsers(usersData.data);
       }
 
@@ -204,6 +229,58 @@ function HomeDashboard() {
       default: return '❓';
     }
   };
+
+  // Generate notifications based on scan statuses
+  const generateNotifications = useMemo(() => {
+    const notifications = [];
+    
+    // Group scans by status
+    const healthyScans = scanHistory.filter(scan => scan.status === 'Healthy');
+    const reparableScans = scanHistory.filter(scan => scan.status === 'Reparable');
+    const beyondRepairScans = scanHistory.filter(scan => scan.status === 'Beyond Repair');
+    
+    // Add notifications for each status
+    if (healthyScans.length > 0) {
+      notifications.push({
+        id: 'healthy-scans',
+        type: 'success',
+        icon: '✅',
+        title: 'Screens Sent for Production',
+        message: `${healthyScans.length} screen(s) with HEALTHY status have been marked for production.`,
+        count: healthyScans.length,
+        timestamp: new Date().toISOString(),
+        scans: healthyScans
+      });
+    }
+    
+    if (reparableScans.length > 0) {
+      notifications.push({
+        id: 'reparable-scans',
+        type: 'warning',
+        icon: '🔧',
+        title: 'Screens Sent for Repair',
+        message: `${reparableScans.length} screen(s) with REPAIRABLE status have been sent for repair.`,
+        count: reparableScans.length,
+        timestamp: new Date().toISOString(),
+        scans: reparableScans
+      });
+    }
+    
+    if (beyondRepairScans.length > 0) {
+      notifications.push({
+        id: 'beyond-repair-scans',
+        type: 'error',
+        icon: '❌',
+        title: 'Screens Written Off',
+        message: `${beyondRepairScans.length} screen(s) with BEYOND REPAIR status have been written off.`,
+        count: beyondRepairScans.length,
+        timestamp: new Date().toISOString(),
+        scans: beyondRepairScans
+      });
+    }
+    
+    return notifications;
+  }, [scanHistory]);
 
   if (loading) {
     return (
@@ -323,12 +400,80 @@ function HomeDashboard() {
                 🔄
               </button>
               <div className="notifications-dropdown">
-                <button className="notifications-btn" title="Notifications">
+                <button 
+                  className="notifications-btn" 
+                  title="Notifications"
+                  onClick={() => {
+                    setNotificationDropdownOpen(!notificationDropdownOpen);
+                    if (!notificationsViewed) {
+                      setNotificationsViewed(true);
+                    }
+                  }}
+                >
                   🔔
-                  {notifications.length > 0 && (
-                    <span className="notification-badge">{notifications.length}</span>
+                  {generateNotifications.length > 0 && !notificationsViewed && (
+                    <span className="notification-badge">{generateNotifications.length}</span>
                   )}
                 </button>
+                
+                {notificationDropdownOpen && (
+                  <div className="notifications-panel">
+                    <div className="notifications-header">
+                      <h3>🔔 Notifications ({generateNotifications.length})</h3>
+                      <button 
+                        className="close-notifications"
+                        onClick={() => setNotificationDropdownOpen(false)}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div className="notifications-list">
+                      {generateNotifications.length === 0 ? (
+                        <div className="no-notifications">
+                          <p>No new notifications</p>
+                        </div>
+                      ) : (
+                        generateNotifications.map((notification) => (
+                          <div 
+                            key={notification.id} 
+                            className={`notification-item ${notification.type} clickable`}
+                            onClick={() => {
+                              setSelectedNotificationView(notification);
+                              setNotificationDropdownOpen(false);
+                              if (!notificationsViewed) {
+                                setNotificationsViewed(true);
+                              }
+                            }}
+                          >
+                            <div className="notification-icon">{notification.icon}</div>
+                            <div className="notification-content">
+                              <h4>{notification.title}</h4>
+                              <p>{notification.message}</p>
+                              <span className="notification-time">
+                                {new Date(notification.timestamp).toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="notification-count">
+                              {notification.count}
+                            </div>
+                            
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    <div className="notifications-footer">
+                      <button 
+                        className="view-all-notifications"
+                        onClick={() => {
+                          setActiveTab('notifications');
+                          setNotificationDropdownOpen(false);
+                        }}
+                      >
+                        View All Notifications
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="user-dropdown">
                 <button 
@@ -380,48 +525,53 @@ function HomeDashboard() {
               </div>
               
               <div className="stats-grid">
-                <div className="stat-card primary">
+                <div className="stat-card primary clickable" onClick={() => setActiveTab('users')}>
                   <div className="stat-icon">👥</div>
                   <div className="stat-content">
                     <h3>Total Technicians</h3>
                     <div className="stat-value">{dashboardOverview.totalUsers}</div>
                     <div className="stat-trend positive">↗️ +12% this month</div>
+                    <div className="click-hint">👆 Click to View</div>
                   </div>
                 </div>
                 
-                <div className="stat-card success">
+                <div className="stat-card success clickable" onClick={() => setActiveTab('sessions')}>
                   <div className="stat-icon">📋</div>
                   <div className="stat-content">
                     <h3>Total Sessions</h3>
                     <div className="stat-value">{dashboardOverview.totalSessions}</div>
                     <div className="stat-trend positive">↗️ +8% this week</div>
+                    <div className="click-hint">👆 Click to View</div>
                   </div>
                 </div>
                 
-                <div className="stat-card info">
+                <div className="stat-card info clickable" onClick={() => setActiveTab('scans')}>
                   <div className="stat-icon">📱</div>
                   <div className="stat-content">
                     <h3>Total Scans</h3>
                     <div className="stat-value">{dashboardOverview.totalScans}</div>
                     <div className="stat-trend positive">↗️ +15% today</div>
+                    <div className="click-hint">👆 Click to View</div>
                   </div>
                 </div>
                 
-                <div className="stat-card warning">
+                <div className="stat-card warning clickable" onClick={() => setActiveTab('scans')}>
                   <div className="stat-icon">📅</div>
                   <div className="stat-content">
                     <h3>Today's Scans</h3>
                     <div className="stat-value">{dashboardOverview.todayScans}</div>
                     <div className="stat-trend neutral">→ No change</div>
+                    <div className="click-hint">👆 Click to View</div>
                   </div>
                 </div>
                 
-                <div className="stat-card secondary">
+                <div className="stat-card secondary clickable" onClick={() => setActiveTab('scans')}>
                   <div className="stat-icon">📈</div>
                   <div className="stat-content">
                     <h3>Weekly Scans</h3>
                     <div className="stat-value">{dashboardOverview.weeklyScans}</div>
                     <div className="stat-trend positive">↗️ +22% this week</div>
+                     <div className="click-hint">👆 Click to View</div>
                   </div>
                 </div>
               </div>
@@ -429,7 +579,7 @@ function HomeDashboard() {
               <div className="scan-breakdown">
                 <h3>📊 Scan Status Breakdown</h3>
                 <div className="status-cards">
-                  <div className="status-card healthy">
+                  <div className="status-card healthy clickable" onClick={() => setActiveTab('scans')}>
                     <div className="status-icon">✅</div>
                     <div className="status-content">
                       <h4>Healthy</h4>
@@ -443,10 +593,11 @@ function HomeDashboard() {
                           style={{width: `${scanStats.totalScans > 0 ? (scanStats.healthy / scanStats.totalScans) * 100 : 0}%`}}
                         ></div>
                       </div>
+                      <div className="click-hint">👆 Click to View</div>
                     </div>
                   </div>
                   
-                  <div className="status-card reparable">
+                  <div className="status-card reparable clickable" onClick={() => setActiveTab('scans')}>
                     <div className="status-icon">🔧</div>
                     <div className="status-content">
                       <h4>Reparable</h4>
@@ -460,10 +611,11 @@ function HomeDashboard() {
                           style={{width: `${scanStats.totalScans > 0 ? (scanStats.reparable / scanStats.totalScans) * 100 : 0}%`}}
                         ></div>
                       </div>
+                      <div className="click-hint">👆 Click to View</div>
                     </div>
                   </div>
                   
-                  <div className="status-card beyond-repair">
+                  <div className="status-card beyond-repair clickable" onClick={() => setActiveTab('scans')}>
                     <div className="status-icon">❌</div>
                     <div className="status-content">
                       <h4>Beyond Repair</h4>
@@ -477,6 +629,7 @@ function HomeDashboard() {
                           style={{width: `${scanStats.totalScans > 0 ? (scanStats.beyondRepair / scanStats.totalScans) * 100 : 0}%`}}
                         ></div>
                       </div>
+                      <div className="click-hint">👆 Click to View</div>
                     </div>
                   </div>
                 </div>
@@ -487,9 +640,10 @@ function HomeDashboard() {
                   <h3>🏢 Department Statistics</h3>
                   <div className="department-grid">
                     {Object.entries(departmentStats).map(([dept, count]) => (
-                      <div key={dept} className="department-card">
+                      <div key={dept} className="department-card clickable" onClick={() => setActiveTab('users')}>
                         <div className="department-name">{dept}</div>
                         <div className="department-count">{count} technicians</div>
+                        <div className="click-hint">👆 Click to View</div>
                       </div>
                     ))}
                   </div>
@@ -534,6 +688,27 @@ function HomeDashboard() {
             </div>
           )}
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//THIS IS THE SCANS HISTORY SECTION
           {activeTab === 'scans' && (
             <div className="scans-section">
               <div className="section-header">
@@ -602,7 +777,21 @@ function HomeDashboard() {
                               📅 {new Date(scan.timestamp || scan.date).toLocaleString()}
                             </div>
                             <div className="scan-actions">
-                              <button className="scan-action-btn">👁️ View</button>
+                              <button 
+                                className="scan-action-btn"
+                                onClick={() => {
+                                  console.log('🔍 Selected Scan:', scan);
+                                  console.log('🔍 Users Array:', users);
+                                  console.log('🔍 Scan Keys:', Object.keys(scan));
+                                  setSelectedScan({
+                                    ...scan,
+                                    technicianDisplay: scan.technician || 'Unknown'
+                                  });
+                                  setScanModalOpen(true);
+                                }}
+                              >
+                                👁️ View
+                              </button>
                               <button className="scan-action-btn">📋 Details</button>
                               <button className="scan-action-btn">📤 Export</button>
                             </div>
@@ -616,6 +805,24 @@ function HomeDashboard() {
             </div>
           )}
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//THIS IS THE SESSIONS SECTION
           {activeTab === 'sessions' && (
             <div className="sessions-section">
               <div className="section-header">
@@ -668,42 +875,194 @@ function HomeDashboard() {
 
           {activeTab === 'notifications' && (
             <div className="notifications-section">
-              <div className="section-header">
-                <h2>🔔 Notifications</h2>
-                <div className="section-actions">
-                  <button className="mark-all-read-btn">
-                    ✅ Mark All Read
-                  </button>
-                  <button className="clear-all-btn">
-                    🗑️ Clear All
-                  </button>
-                </div>
-              </div>
-              {notifications.length === 0 ? (
-                <div className="no-data">
-                  <div className="no-data-icon">🔔</div>
-                  <h3>No notifications</h3>
-                  <p>System notifications will appear here.</p>
+              {selectedNotificationView ? (
+                <div className="notification-detail-view">
+                  <div className="section-header">
+                    <button 
+                      className="back-btn"
+                      onClick={() => setSelectedNotificationView(null)}
+                    >
+                      ← Back to Notifications
+                    </button>
+                    <div className="section-actions">
+                      <button className="export-btn">
+                        📥 Export Screens
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="notification-detail-header">
+                    <div className="detail-icon">{selectedNotificationView.icon}</div>
+                    <div className="detail-info">
+                      <h2>{selectedNotificationView.title}</h2>
+                      <p>{selectedNotificationView.message}</p>
+                      <span className="detail-time">
+                        {new Date(selectedNotificationView.timestamp).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="detail-count">
+                      <span className="count-number">{selectedNotificationView.count}</span>
+                      <span className="count-label">Screens</span>
+                    </div>
+                  </div>
+
+                  <div className="screens-grid">
+                    <h3>📱 Screens in this Category</h3>
+                    {selectedNotificationView.scans.length === 0 ? (
+                      <div className="no-screens">
+                        <p>No screens found in this category.</p>
+                      </div>
+                    ) : (
+                      <div className="screens-list">
+                        {selectedNotificationView.scans.map((scan, index) => (
+                          <div key={index} className="screen-card">
+                            <div className="screen-header">
+                              <div className="screen-barcode">
+                                <span className="barcode-icon">📋</span>
+                                <span className="barcode-text">{scan.barcode || `Screen ${index + 1}`}</span>
+                              </div>
+                              <div className="screen-status">
+                                <span className={`status-badge ${selectedNotificationView.type}`}>
+                                  {selectedNotificationView.icon} {selectedNotificationView.title}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="screen-details">
+                              <div className="detail-row">
+                                <span className="detail-label">Technician:</span>
+                                <span className="detail-value">{scan.technician || 'Unknown'}</span>
+                              </div>
+                              <div className="detail-row">
+                                <span className="detail-label">Department:</span>
+                                <span className="detail-value">
+                                  {users.find(u => `${u.name} ${u.surname}` === scan.technician)?.department || 'Unknown'}
+                                </span>
+                              </div>
+                              <div className="detail-row">
+                                <span className="detail-label">Scan Time:</span>
+                                <span className="detail-value">
+                                  {new Date(scan.timestamp || scan.date).toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="detail-row">
+                                <span className="detail-label">Status:</span>
+                                <span className="detail-value status-text">
+                                  {scan.status}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="screen-actions">
+                              
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : (
-                <div className="notifications-list">
-                  {notifications.map((note, idx) => (
-                    <div key={idx} className="notification-card">
-                      <div className="notification-icon">📢</div>
-                      <div className="notification-content">
-                        <p>{note.message}</p>
-                        <span className="notification-time">
-                          {new Date(note.date || note.timestamp).toLocaleString()}
-                        </span>
-                      </div>
+                <>
+                  <div className="section-header">
+                    <h2>🔔 Notifications</h2>
+                    <div className="section-actions">
+                      <button className="mark-all-read-btn">
+                        ✅ Mark All Read
+                      </button>
+                      <button className="clear-all-btn">
+                        🗑️ Clear All
+                      </button>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                  {generateNotifications.length === 0 ? (
+                    <div className="no-data">
+                      <div className="no-data-icon">🔔</div>
+                      <h3>No notifications</h3>
+                      <p>System notifications will appear here.</p>
+                    </div>
+                  ) : (
+                    <div className="notifications-list">
+                      {generateNotifications.map((notification) => (
+                        <div 
+                          key={notification.id} 
+                          className={`notification-card ${notification.type} clickable`}
+                          onClick={() => {
+                            setSelectedNotificationView(notification);
+                            if (!notificationsViewed) {
+                              setNotificationsViewed(true);
+                            }
+                          }}
+                        >
+                          <div className="notification-icon">{notification.icon}</div>
+                          <div className="notification-content">
+                            <h4>{notification.title}</h4>
+                            <p>{notification.message}</p>
+                            <span className="notification-time">
+                              {new Date(notification.timestamp).toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="notification-count-badge">
+                            {notification.count}
+                          </div>
+                          <div className="click-hint">👆 Click to View Screens</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
         </div>
       </div>
+      
+      {/* Scan Detail Modal */}
+      {scanModalOpen && selectedScan && (
+        <div className="modal-overlay" onClick={() => setScanModalOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>📋 Scan Details</h3>
+              <button className="modal-close" onClick={() => setScanModalOpen(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="modal-row">
+                <span className="modal-label">👨‍💼 Technician:</span>
+                <span className="modal-value">{selectedScan.technicianDisplay}</span>
+              </div>
+              <div className="modal-row">
+                <span className="modal-label">📋 Barcode:</span>
+                <span className="modal-value">{selectedScan.barcode || 'N/A'}</span>
+              </div>
+              <div className="modal-row">
+                <span className="modal-label">📊 Status:</span>
+                <span className="modal-value" style={{color: getStatusColor(selectedScan.status)}}>
+                  {getStatusIcon(selectedScan.status)} {selectedScan.status}
+                </span>
+              </div>
+              <div className="modal-row">
+                <span className="modal-label">🕐 Scan Time:</span>
+                <span className="modal-value">{new Date(selectedScan.timestamp || selectedScan.date).toLocaleString()}</span>
+              </div>
+              <div className="modal-row">
+                <span className="modal-label">🏢 Department:</span>
+                <span className="modal-value">
+                  {(() => {
+                    const foundUser = users.find(u => u.username === selectedScan.technicianDisplay);
+                    console.log('🔍 Department Lookup:', {
+                      technicianDisplay: selectedScan.technicianDisplay,
+                      foundUser: foundUser,
+                      allUsers: users.map(u => ({ username: u.username, department: u.department }))
+                    });
+                    return selectedScan.department || foundUser?.department || 'Unknown';
+                  })()}
+                </span>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="modal-btn" onClick={() => setScanModalOpen(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );}
 

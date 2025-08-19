@@ -11,7 +11,7 @@ function createWindow() {
     height: 900,
     minWidth: 1200,
     minHeight: 800,
-    icon: path.join(__dirname, '../public/logo.png'), // Use your logo as app icon
+    icon: path.join(__dirname, 'logo.png'), // Use your logo as app icon
     titleBarStyle: 'default', // Use native title bar
     show: false, // Don't show until ready
     webPreferences: {
@@ -48,7 +48,7 @@ function createWindow() {
     // Completely disable dev tools even in development for testing
     // mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../build/index.html'));
+    mainWindow.loadFile(path.join(__dirname, 'index.html'));
   }
 
   // Remove menu bar completely for cleaner look
