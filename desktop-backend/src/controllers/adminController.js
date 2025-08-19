@@ -1,4 +1,7 @@
 import moment from 'moment';
+import bcrypt from 'bcryptjs';
+import { ObjectId } from 'mongodb';
+import databaseService from '../services/databaseService.js';
 // Direct database access will be implemented here
 
 // Get mobile token for desktop frontend
@@ -62,10 +65,19 @@ export const getDashboardStats = async (req, res) => {
 // User Management
 export const getAllUsers = async (req, res) => {
   try {
-    // TODO: Implement direct database access
+    console.log('🔄 Get all users request received');
+    
+    // Connect to database
+    const usersCollection = await databaseService.getCollection('users');
+    
+    // Get all users from database
+    const users = await usersCollection.find({}).toArray();
+    
+    console.log(`✅ Found ${users.length} users`);
+    
     res.json({
       success: true,
-      data: []
+      data: users
     });
   } catch (error) {
     console.error('❌ Get all users error:', error);
@@ -75,13 +87,53 @@ export const getAllUsers = async (req, res) => {
 
 export const createUser = async (req, res) => {
   try {
-    const token = req.headers['mobile-token'];
-    if (!token) {
-      return res.status(401).json({ error: 'Mobile backend token required' });
+    console.log('🔄 Create user request received');
+    console.log('User data:', req.body);
+
+    const { username, email, password, department } = req.body;
+
+    // Validate required fields
+    if (!username || !email || !password || !department) {
+      return res.status(400).json({ error: 'Username, email, password, and department are required' });
     }
 
-    const result = await mobileApiService.createUser(token, req.body);
-    return res.status(201).json(result);
+    // Connect to database
+    const usersCollection = await databaseService.getCollection('users');
+
+    // Check if username already exists
+    const existingUser = await usersCollection.findOne({ username: username.trim() });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Username already exists' });
+    }
+
+    // Hash password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password.trim(), saltRounds);
+
+    // Create new user
+    const newUser = {
+      username: username.trim(),
+      email: email.trim(),
+      password: hashedPassword,
+      department: department.trim(),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const result = await usersCollection.insertOne(newUser);
+
+    console.log('✅ User created successfully');
+    return res.status(201).json({
+      success: true,
+      message: 'User created successfully',
+      data: {
+        id: result.insertedId,
+        username: newUser.username,
+        email: newUser.email,
+        department: newUser.department
+      }
+    });
+
   } catch (error) {
     console.error('❌ Create user error:', error);
     return res.status(500).json({ error: 'Failed to create user' });
@@ -90,14 +142,68 @@ export const createUser = async (req, res) => {
 
 export const updateUser = async (req, res) => {
   try {
-    const token = req.headers['mobile-token'];
-    if (!token) {
-      return res.status(401).json({ error: 'Mobile backend token required' });
-    }
+    console.log('🔄 Update user request received');
+    console.log('User ID:', req.params.id);
+    console.log('Update data:', req.body);
 
     const { id } = req.params;
-    const result = await mobileApiService.updateUser(token, id, req.body);
-    return res.json(result);
+    const { username, email, department, password } = req.body;
+
+    // Validate required fields
+    if (!username || !email || !department) {
+      return res.status(400).json({ error: 'Username, email, and department are required' });
+    }
+
+    // Connect to database
+    const usersCollection = await databaseService.getCollection('users');
+
+    // Check if user exists
+    const existingUser = await usersCollection.findOne({ _id: new ObjectId(id) });
+    if (!existingUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check if username is already taken by another user
+    const usernameExists = await usersCollection.findOne({ 
+      username: username.trim(),
+      _id: { $ne: new ObjectId(id) }
+    });
+    if (usernameExists) {
+      return res.status(400).json({ error: 'Username already exists' });
+    }
+
+    // Prepare update data
+    const updateData = {
+      username: username.trim(),
+      email: email.trim(),
+      department: department.trim(),
+      updatedAt: new Date()
+    };
+
+    // Hash password if provided
+    if (password && password.trim()) {
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(password.trim(), saltRounds);
+      updateData.password = hashedPassword;
+    }
+
+    // Update user in database
+    const result = await usersCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updateData }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    console.log('✅ User updated successfully');
+    return res.json({ 
+      success: true, 
+      message: 'User updated successfully',
+      data: { id, username: updateData.username, email: updateData.email, department: updateData.department }
+    });
+
   } catch (error) {
     console.error('❌ Update user error:', error);
     return res.status(500).json({ error: 'Failed to update user' });
@@ -106,14 +212,34 @@ export const updateUser = async (req, res) => {
 
 export const deleteUser = async (req, res) => {
   try {
-    const token = req.headers['mobile-token'];
-    if (!token) {
-      return res.status(401).json({ error: 'Mobile backend token required' });
-    }
+    console.log('🔄 Delete user request received');
+    console.log('User ID:', req.params.id);
 
     const { id } = req.params;
-    const result = await mobileApiService.deleteUser(token, id);
-    return res.json(result);
+
+    // Connect to database
+    const usersCollection = await databaseService.getCollection('users');
+
+    // Check if user exists
+    const existingUser = await usersCollection.findOne({ _id: new ObjectId(id) });
+    if (!existingUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Delete user from database
+    const result = await usersCollection.deleteOne({ _id: new ObjectId(id) });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    console.log('✅ User deleted successfully');
+    return res.json({
+      success: true,
+      message: 'User deleted successfully',
+      data: { id }
+    });
+
   } catch (error) {
     console.error('❌ Delete user error:', error);
     return res.status(500).json({ error: 'Failed to delete user' });
@@ -123,16 +249,20 @@ export const deleteUser = async (req, res) => {
 // Scan Management
 export const getAllScans = async (req, res) => {
   try {
-    const token = req.headers['mobile-token'];
-    if (!token) {
-      return res.status(401).json({ error: 'Mobile backend token required' });
-    }
-
-    const { status, department, dateFrom, dateTo, page = 1, limit = 50 } = req.query;
-    const filters = { status, department, dateFrom, dateTo, page, limit };
-
-    const result = await mobileApiService.getAllScans(token, filters);
-    return res.json(result);
+    console.log('🔄 Get all scans request received');
+    
+    // Connect to database
+    const screensCollection = await databaseService.getCollection('screens');
+    
+    // Get all scans from database
+    const scans = await screensCollection.find({}).toArray();
+    
+    console.log(`✅ Found ${scans.length} scans`);
+    
+    res.json({
+      success: true,
+      data: scans
+    });
   } catch (error) {
     console.error('❌ Get all scans error:', error);
     return res.status(500).json({ error: 'Failed to fetch scans' });
@@ -173,14 +303,34 @@ export const updateScan = async (req, res) => {
 
 export const deleteScan = async (req, res) => {
   try {
-    const token = req.headers['mobile-token'];
-    if (!token) {
-      return res.status(401).json({ error: 'Mobile backend token required' });
-    }
+    console.log('🔄 Delete scan request received');
+    console.log('Scan ID:', req.params.id);
 
     const { id } = req.params;
-    const result = await mobileApiService.deleteScan(token, id);
-    return res.json(result);
+
+    // Connect to database
+    const screensCollection = await databaseService.getCollection('screens');
+
+    // Check if scan exists
+    const existingScan = await screensCollection.findOne({ _id: new ObjectId(id) });
+    if (!existingScan) {
+      return res.status(404).json({ error: 'Scan not found' });
+    }
+
+    // Delete scan from database
+    const result = await screensCollection.deleteOne({ _id: new ObjectId(id) });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'Scan not found' });
+    }
+
+    console.log('✅ Scan deleted successfully');
+    return res.json({
+      success: true,
+      message: 'Scan deleted successfully',
+      data: { id }
+    });
+
   } catch (error) {
     console.error('❌ Delete scan error:', error);
     return res.status(500).json({ error: 'Failed to delete scan' });
