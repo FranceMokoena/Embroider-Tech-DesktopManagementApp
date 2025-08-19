@@ -16,32 +16,83 @@
     "install-all": "npm install && cd desktop-backend && npm install",
     "build-electron": "npm run build && electron-builder",
     "build-windows": "npm run build && electron-builder --win",
+    "build-installer": "npm run build && electron-builder --win --publish=never",
     "dist": "npm run build && electron-builder --publish=never",
-    "pack": "npm run build && electron-builder --dir"
+    "pack": "npm run build && electron-builder --dir",
+    "create-installer": "npm run build && electron-builder --win nsis --publish=never"
   },
   "build": {
     "appId": "com.embroiderytech.desktop",
-    "productName": "Embroidery Tech Management",
+    "productName": "EmbroideryTech Management System",
+    "copyright": "Copyright © 2024 EmbroideryTech",
     "directories": {
       "output": "dist"
     },
+    "files": [
+      "build/**/*",
+      "node_modules/**/*",
+      "src/main.js",
+      "package.json",
+      "desktop-backend/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "desktop-backend",
+        "to": "desktop-backend",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "assets",
+        "to": "assets",
+        "filter": ["**/*"]
+      }
+    ],
     "win": {
       "target": [
         {
           "target": "nsis",
-          "arch": [
-            "x64"
-          ]
+          "arch": ["x64", "ia32"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64", "ia32"]
         }
       ],
-      "icon": "public/logo.png"
+      "icon": "build/logo512.png",
+      "requestedExecutionLevel": "asInvoker",
+      "verifyUpdateCodeSignature": false,
+      "publisherName": "EmbroideryTech",
+      "fileAssociations": [
+        {
+          "ext": "emb",
+          "name": "EmbroideryTech Project",
+          "description": "EmbroideryTech Management Project File"
+        }
+      ]
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Embroidery Tech Management"
+      "shortcutName": "EmbroideryTech Management",
+      "license": "LICENSE",
+      "language": "1033",
+      "perMachine": false,
+      "deleteAppDataOnUninstall": true,
+      "runAfterFinish": true,
+      "menuCategory": "EmbroideryTech",
+      "artifactName": "EmbroideryTech-Management-Setup-${version}.${ext}",
+      "uninstallDisplayName": "EmbroideryTech Management System"
+    },
+    "portable": {
+      "artifactName": "EmbroideryTech-Management-Portable-${version}.${ext}"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "embroiderytech",
+      "repo": "embroidery-desktop"
     }
   },
   "dependencies": {
@@ -78,8 +129,10 @@
     "desktop",
     "management",
     "electron",
-    "react"
+    "react",
+    "installer",
+    "windows"
   ],
-  "author": "Embroidery Tech",
+  "author": "EmbroideryTech",
   "license": "ISC"
 }

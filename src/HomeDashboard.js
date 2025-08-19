@@ -2039,26 +2039,22 @@ function HomeDashboard() {
 
   if (loading) {
     return (
-      <div className="dashboard-wrapper">
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <h2>🔄 Loading Dashboard Data...</h2>
-          <p>Fetching real-time data from database...</p>
-        </div>
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <h2>🔄 Loading Dashboard Data...</h2>
+        <p>Fetching real-time data from database...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="dashboard-wrapper">
-        <div className="error-container">
-          <h2>❌ Error Loading Dashboard</h2>
-          <p>{error}</p>
-          <button onClick={() => window.location.reload()} className="retry-btn">
-            🔄 Retry
-          </button>
-        </div>
+      <div className="error-container">
+        <h2>❌ Error Loading Dashboard</h2>
+        <p>{error}</p>
+        <button onClick={() => window.location.reload()} className="retry-btn">
+          🔄 Retry
+        </button>
       </div>
     );
   }
@@ -3039,12 +3035,17 @@ function HomeDashboard() {
                   <div className="section-header">
                     <h2>🔔 Notifications</h2>
                     <div className="section-actions">
-                      <button className="mark-all-read-btn">
+                      <button 
+                        className="mark-all-read-btn"
+                        onClick={() => {
+                          setNotificationsViewed(true);
+                          setNotificationDropdownOpen(false);
+                        }}
+                        disabled={generateNotifications.length === 0}
+                      >
                         ✅ Mark All Read
                       </button>
-                      <button className="clear-all-btn">
-                        🗑️ Clear All
-                      </button>
+                      
                     </div>
                   </div>
                   {generateNotifications.length === 0 ? (
