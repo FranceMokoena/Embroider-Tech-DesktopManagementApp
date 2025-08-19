@@ -234,6 +234,7 @@ export const getSessions = async (req, res) => {
     const taskSessionsCollection = db.collection('tasksessions');
     
     // Fetch real session data with technician info
+    console.log('🔍 Fetching sessions with scan count...');
     const sessions = await taskSessionsCollection.aggregate([
       {
         $lookup: {
@@ -247,7 +248,7 @@ export const getSessions = async (req, res) => {
         $lookup: {
           from: 'screens',
           localField: '_id',
-          foreignField: 'sessionId',
+          foreignField: 'session',
           as: 'scans'
         }
       },
@@ -271,6 +272,13 @@ export const getSessions = async (req, res) => {
       { $sort: { startTime: -1 } }
     ]).toArray();
 
+    console.log('🔍 Sessions with scan count:', sessions.map(s => ({
+      id: s._id,
+      technician: s.technician,
+      scanCount: s.scanCount,
+      startTime: s.startTime
+    })));
+    
     res.json({
       success: true,
       data: sessions

@@ -1466,9 +1466,11 @@ body {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   max-width: 500px;
   width: 90%;
-  max-height: 80vh;
+  max-height: 85vh;
   overflow: hidden;
   animation: slideUp 0.3s ease;
+  display: flex;
+  flex-direction: column;
 }
 
 @keyframes slideUp {
@@ -1521,6 +1523,9 @@ body {
 
 .modal-body {
   padding: 25px;
+  overflow-y: auto;
+  flex: 1;
+  max-height: calc(85vh - 140px); /* Account for header and footer */
 }
 
 .modal-row {
@@ -2444,4 +2449,140 @@ body {
 .sessions-section,
 .notifications-section {
   animation: fadeIn 0.5s ease-out;
+}
+
+/* Export Confirmation Modal Styles */
+.export-confirmation {
+  text-align: center;
+  padding: 20px 0;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.export-icon {
+  font-size: 48px;
+  margin-bottom: 15px;
+  animation: bounce 0.6s ease-in-out;
+}
+
+.export-confirmation h4 {
+  color: #2c3e50;
+  margin-bottom: 10px;
+  font-size: 1.3rem;
+}
+
+.export-confirmation p {
+  color: #7f8c8d;
+  margin-bottom: 25px;
+  font-size: 1rem;
+}
+
+.scan-preview {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 15px;
+  margin: 15px 0;
+  border: 2px solid #e9ecef;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.preview-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.preview-row:last-child {
+  border-bottom: none;
+}
+
+.preview-label {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 0.95rem;
+}
+
+.preview-value {
+  color: #34495e;
+  font-size: 0.95rem;
+  text-align: right;
+  max-width: 60%;
+  word-break: break-word;
+}
+
+.export-note {
+  background: #e3f2fd;
+  border: 1px solid #2196f3;
+  border-radius: 8px;
+  padding: 15px;
+  margin-top: 20px;
+}
+
+.export-note p {
+  color: #1976d2;
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding-top: 20px;
+  border-top: 1px solid #e9ecef;
+  flex-shrink: 0;
+  background: #f8fafc;
+  padding: 20px 25px;
+}
+
+.modal-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 100px;
+  background: #3498db;
+  color: white;
+}
+
+.modal-btn.secondary {
+  background: #95a5a6;
+  color: white;
+}
+
+.modal-btn.secondary:hover {
+  background: #7f8c8d;
+  transform: translateY(-1px);
+}
+
+.modal-btn.primary {
+  background: #3498db;
+  color: white;
+}
+
+.modal-btn.primary:hover {
+  background: #2980b9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-10px);
+  }
+  60% {
+    transform: translateY(-5px);
+  }
 }
