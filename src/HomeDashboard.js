@@ -164,6 +164,7 @@ function HomeDashboard() {
         const scanData = await scanHistoryRes.json();
         const newScanHistory = scanData.scans;
         console.log('🔍 Scan History Data:', newScanHistory);
+        console.log('🔍 First scan details:', newScanHistory[0]);
         setScanHistory(newScanHistory);
         
         // Check if there are new scans (simple check - if scan count changed)

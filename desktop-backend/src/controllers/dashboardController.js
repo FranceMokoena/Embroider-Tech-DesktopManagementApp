@@ -74,20 +74,36 @@ export const getScanHistory = async (req, res) => {
     const db = await databaseService.getDb();
     const screensCollection = db.collection('screens');
     
-    // Fetch real scan data with technician info
+    // First, let's debug what's in the collections
+    console.log('🔍 Debugging scan history...');
+    
+    // Check screens collection structure
+    const sampleScreen = await screensCollection.findOne();
+    console.log('📱 Sample screen:', sampleScreen);
+    
+    // Check tasksessions collection structure
+    const taskSessionsCollection = db.collection('tasksessions');
+    const sampleSession = await taskSessionsCollection.findOne();
+    console.log('📋 Sample session:', sampleSession);
+    
+    // Check users collection structure
+    const usersCollection = db.collection('users');
+    const sampleUser = await usersCollection.findOne();
+    console.log('👤 Sample user:', sampleUser);
+    
+    // Try a simpler approach - get all scans first, then enrich with session data
     const scans = await screensCollection.aggregate([
       {
         $lookup: {
           from: 'tasksessions',
           localField: 'sessionId',
           foreignField: '_id',
-          as: 'session'
+          as: 'sessionData'
         }
       },
       {
-        $unwind: {
-          path: '$session',
-          preserveNullAndEmptyArrays: true
+        $addFields: {
+          session: { $arrayElemAt: ['$sessionData', 0] }
         }
       },
       {
@@ -95,19 +111,13 @@ export const getScanHistory = async (req, res) => {
           from: 'users',
           localField: 'session.technician',
           foreignField: '_id',
-          as: 'technicianInfo'
-        }
-      },
-      {
-        $unwind: {
-          path: '$technicianInfo',
-          preserveNullAndEmptyArrays: true
+          as: 'technicianData'
         }
       },
       {
         $addFields: {
-          technician: '$technicianInfo.username',
-          department: '$technicianInfo.department'
+          technician: { $arrayElemAt: ['$technicianData.username', 0] },
+          department: { $arrayElemAt: ['$technicianData.department', 0] }
         }
       },
       {
@@ -122,6 +132,11 @@ export const getScanHistory = async (req, res) => {
       },
       { $sort: { timestamp: -1 } }
     ]).toArray();
+    
+    console.log('🔍 First scan result:', scans[0]);
+    console.log('🔍 Sample scan with technician:', scans.find(s => s.technician));
+    console.log('🔍 Total scans:', scans.length);
+    console.log('🔍 Scans with technician:', scans.filter(s => s.technician).length);
 
     res.json({
       success: true,
