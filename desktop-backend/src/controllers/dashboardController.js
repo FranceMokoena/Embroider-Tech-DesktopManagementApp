@@ -91,52 +91,67 @@ export const getScanHistory = async (req, res) => {
     const sampleUser = await usersCollection.findOne();
     console.log('👤 Sample user:', sampleUser);
     
-    // Try a simpler approach - get all scans first, then enrich with session data
-    const scans = await screensCollection.aggregate([
-      {
-        $lookup: {
-          from: 'tasksessions',
-          localField: 'sessionId',
-          foreignField: '_id',
-          as: 'sessionData'
-        }
-      },
-      {
-        $addFields: {
-          session: { $arrayElemAt: ['$sessionData', 0] }
-        }
-      },
-      {
-        $lookup: {
-          from: 'users',
-          localField: 'session.technician',
-          foreignField: '_id',
-          as: 'technicianData'
-        }
-      },
-      {
-        $addFields: {
-          technician: { $arrayElemAt: ['$technicianData.username', 0] },
-          department: { $arrayElemAt: ['$technicianData.department', 0] }
-        }
-      },
-      {
-        $project: {
-          barcode: 1,
-          status: 1,
-          technician: 1,
-          department: 1,
-          timestamp: 1,
-          date: 1
-        }
-      },
-      { $sort: { timestamp: -1 } }
-    ]).toArray();
+    // Get all scans first
+    const allScans = await screensCollection.find({}).sort({ timestamp: -1 }).toArray();
+    console.log('📱 All scans count:', allScans.length);
+    
+    // Get all sessions
+    const allSessions = await taskSessionsCollection.find({}).toArray();
+    console.log('📋 All sessions count:', allSessions.length);
+    
+    // Get all users
+    const allUsers = await usersCollection.find({}).toArray();
+    console.log('👤 All users count:', allUsers.length);
+    
+    // Create a map of sessionId to session data
+    const sessionMap = {};
+    allSessions.forEach(session => {
+      sessionMap[session._id.toString()] = session;
+    });
+    
+    // Create a map of userId to user data
+    const userMap = {};
+    allUsers.forEach(user => {
+      userMap[user._id.toString()] = user;
+    });
+    
+    // Enrich scan data with technician info
+    const scans = allScans.map(scan => {
+      // Check if it's sessionId or session field
+      const sessionKey = scan.sessionId || scan.session;
+      const session = sessionMap[sessionKey?.toString()];
+      const technician = session ? userMap[session.technician?.toString()] : null;
+      
+      // Debug each scan mapping
+      console.log(`🔍 Scan ${scan.barcode}:`, {
+        scanSessionId: scan.sessionId?.toString(),
+        scanSession: scan.session?.toString(),
+        sessionKey: sessionKey?.toString(),
+        foundSession: !!session,
+        sessionTechnicianId: session?.technician?.toString(),
+        foundTechnician: !!technician,
+        technicianUsername: technician?.username
+      });
+      
+      return {
+        _id: scan._id,
+        barcode: scan.barcode,
+        status: scan.status,
+        timestamp: scan.timestamp,
+        date: scan.date,
+        technician: technician?.username || 'Unknown',
+        department: technician?.department || 'Unknown'
+      };
+    });
     
     console.log('🔍 First scan result:', scans[0]);
-    console.log('🔍 Sample scan with technician:', scans.find(s => s.technician));
+    console.log('🔍 Sample scan with technician:', scans.find(s => s.technician && s.technician !== 'Unknown'));
     console.log('🔍 Total scans:', scans.length);
-    console.log('🔍 Scans with technician:', scans.filter(s => s.technician).length);
+    console.log('🔍 Scans with technician:', scans.filter(s => s.technician && s.technician !== 'Unknown').length);
+    console.log('🔍 Sample session map keys:', Object.keys(sessionMap).slice(0, 3));
+    console.log('🔍 Sample user map keys:', Object.keys(userMap).slice(0, 3));
+    console.log('🔍 Sample session data:', Object.values(sessionMap).slice(0, 2));
+    console.log('🔍 Sample user data:', Object.values(userMap).slice(0, 2));
 
     res.json({
       success: true,
