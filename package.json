@@ -27,7 +27,7 @@
   },
   "build": {
     "appId": "com.embroiderytech.desktop",
-    "productName": "EmbroideryTech Management System",
+    "productName": "EmbroideryTech-Management-System",
     "copyright": "Copyright © 2024 EmbroideryTech",
     "directories": {
       "output": "dist"
@@ -105,8 +105,8 @@
     },
     "publish": {
       "provider": "github",
-      "owner": "embroiderytech",
-      "repo": "embroidery-desktop",
+      "owner": "FranceMokoena",
+      "repo": "Embroider-Tech-DesktopManagementApp",
       "private": false,
       "releaseType": "release"
     }
