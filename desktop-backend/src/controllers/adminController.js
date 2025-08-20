@@ -388,6 +388,52 @@ export const getSessionById = async (req, res) => {
   }
 };
 
+export const deleteSession = async (req, res) => {
+  try {
+    console.log('🔄 Delete session request received');
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ error: 'Session ID is required' });
+    }
+
+    // Connect to database
+    const sessionsCollection = await databaseService.getCollection('tasksessions');
+    const screensCollection = await databaseService.getCollection('screens');
+
+    // Check if session exists
+    const existingSession = await sessionsCollection.findOne({ _id: new ObjectId(id) });
+    if (!existingSession) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    // Delete associated scans first
+    const scanDeleteResult = await screensCollection.deleteMany({ session: new ObjectId(id) });
+    console.log(`🗑️ Deleted ${scanDeleteResult.deletedCount} associated scans`);
+
+    // Delete session from database
+    const result = await sessionsCollection.deleteOne({ _id: new ObjectId(id) });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    console.log('✅ Session deleted successfully');
+    return res.json({
+      success: true,
+      message: 'Session deleted successfully',
+      data: { 
+        id,
+        deletedScans: scanDeleteResult.deletedCount
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Delete session error:', error);
+    return res.status(500).json({ error: 'Failed to delete session' });
+  }
+};
+
 // Search and Filter
 export const searchScans = async (req, res) => {
   try {

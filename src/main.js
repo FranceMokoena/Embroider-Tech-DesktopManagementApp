@@ -1,8 +1,17 @@
-const { app, BrowserWindow, globalShortcut, Menu } = require('electron');
+const { app, BrowserWindow, globalShortcut, Menu, ipcMain, dialog } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const isDev = require('electron-is-dev');
 
 let mainWindow;
+
+// Auto-updater configuration
+autoUpdater.autoDownload = false; // We'll handle download manually to show progress
+autoUpdater.autoInstallOnAppQuit = true;
+
+// Update status variables
+let updateAvailable = false;
+let updateDownloaded = false;
 
 function createWindow() {
   // Create the browser window with professional settings
@@ -40,6 +49,12 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
     mainWindow.focus();
+    
+    // Check for updates when app starts (only in production)
+    if (!isDev) {
+      console.log('🔍 Checking for updates on startup...');
+      autoUpdater.checkForUpdates();
+    }
   });
 
   // Load React app URL in dev, or the build index.html in production
@@ -114,6 +129,117 @@ function createWindow() {
     event.preventDefault();
   });
 }
+
+// Auto-updater event handlers
+autoUpdater.on('checking-for-update', () => {
+  console.log('🔍 Checking for updates...');
+  if (mainWindow) {
+    mainWindow.webContents.send('update-status', { status: 'checking', message: 'Checking for updates...' });
+  }
+});
+
+autoUpdater.on('update-available', (info) => {
+  console.log('✅ Update available:', info);
+  updateAvailable = true;
+  if (mainWindow) {
+    mainWindow.webContents.send('update-status', { 
+      status: 'available', 
+      message: 'Update available!',
+      version: info.version,
+      releaseNotes: info.releaseNotes
+    });
+  }
+  
+  // Show update dialog
+  dialog.showMessageBox(mainWindow, {
+    type: 'info',
+    title: 'Update Available',
+    message: `A new version (${info.version}) is available!`,
+    detail: 'Would you like to download and install the update now?',
+    buttons: ['Download Now', 'Later'],
+    defaultId: 0
+  }).then((result) => {
+    if (result.response === 0) {
+      // User clicked "Download Now"
+      autoUpdater.downloadUpdate();
+    }
+  });
+});
+
+autoUpdater.on('update-not-available', () => {
+  console.log('✅ No updates available');
+  if (mainWindow) {
+    mainWindow.webContents.send('update-status', { status: 'not-available', message: 'No updates available' });
+  }
+});
+
+autoUpdater.on('download-progress', (progressObj) => {
+  console.log('📥 Download progress:', progressObj);
+  if (mainWindow) {
+    mainWindow.webContents.send('update-progress', {
+      speed: progressObj.bytesPerSecond,
+      percent: progressObj.percent,
+      transferred: progressObj.transferred,
+      total: progressObj.total
+    });
+  }
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+  console.log('✅ Update downloaded:', info);
+  updateDownloaded = true;
+  if (mainWindow) {
+    mainWindow.webContents.send('update-status', { 
+      status: 'downloaded', 
+      message: 'Update downloaded and ready to install!',
+      version: info.version
+    });
+  }
+  
+  // Show install dialog
+  dialog.showMessageBox(mainWindow, {
+    type: 'info',
+    title: 'Update Ready',
+    message: `Update ${info.version} has been downloaded!`,
+    detail: 'The application will restart to install the update.',
+    buttons: ['Restart Now', 'Later'],
+    defaultId: 0
+  }).then((result) => {
+    if (result.response === 0) {
+      // User clicked "Restart Now"
+      autoUpdater.quitAndInstall();
+    }
+  });
+});
+
+autoUpdater.on('error', (err) => {
+  console.error('❌ Auto-updater error:', err);
+  if (mainWindow) {
+    mainWindow.webContents.send('update-status', { 
+      status: 'error', 
+      message: 'Update error: ' + err.message 
+    });
+  }
+});
+
+// IPC handlers for update actions
+ipcMain.handle('check-for-updates', () => {
+  if (!isDev) {
+    autoUpdater.checkForUpdates();
+  }
+});
+
+ipcMain.handle('download-update', () => {
+  if (updateAvailable && !isDev) {
+    autoUpdater.downloadUpdate();
+  }
+});
+
+ipcMain.handle('install-update', () => {
+  if (updateDownloaded && !isDev) {
+    autoUpdater.quitAndInstall();
+  }
+});
 
 // Electron app lifecycle
 app.on('ready', createWindow);

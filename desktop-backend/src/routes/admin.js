@@ -13,6 +13,7 @@ import {
   archiveScan,
   getAllSessions,
   getSessionById,
+  deleteSession,
   searchScans,
   searchUsers
 } from '../controllers/adminController.js';
@@ -42,6 +43,7 @@ router.post('/scans/:id/archive', archiveScan);
 // Session Management
 router.get('/sessions', getAllSessions);
 router.get('/sessions/:id', getSessionById);
+router.delete('/sessions/:id', deleteSession);
 
 // Search and Filter
 router.get('/search/scans', searchScans);

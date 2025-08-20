@@ -2,6 +2,9 @@ import React, { useEffect, useState, useMemo } from 'react';
 import './HomeDashboard.css';
 import jsPDF from 'jspdf';
 
+// Import electron for update functionality
+const { ipcRenderer } = window.require ? window.require('electron') : {};
+
 // Debug jsPDF import
 console.log('🔍 jsPDF imported:', typeof jsPDF);
 
@@ -526,6 +529,16 @@ function HomeDashboard() {
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
   const [selectedScansForDelete, setSelectedScansForDelete] = useState([]);
   const [isDeletingScans, setIsDeletingScans] = useState(false);
+
+  // Session Delete Modal States
+  const [sessionDeleteModalOpen, setSessionDeleteModalOpen] = useState(false);
+  const [selectedSessionsForDelete, setSelectedSessionsForDelete] = useState([]);
+  const [isDeletingSessions, setIsDeletingSessions] = useState(false);
+
+  // Auto-Update States
+  const [updateStatus, setUpdateStatus] = useState(null);
+  const [updateProgress, setUpdateProgress] = useState(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
 
   // Generate PDF report for all sessions (or filtered sessions)
   const generateAllSessionsPDFReport = () => {
@@ -1347,6 +1360,98 @@ function HomeDashboard() {
     setSelectedScansForDelete([]);
   };
 
+  // Handle session selection for bulk delete
+  const handleSessionSelection = (sessionId) => {
+    setSelectedSessionsForDelete(prev => {
+      if (prev.includes(sessionId)) {
+        return prev.filter(id => id !== sessionId);
+      } else {
+        return [...prev, sessionId];
+      }
+    });
+  };
+
+  // Handle select all sessions
+  const handleSelectAllSessions = () => {
+    if (selectedSessionsForDelete.length === filteredSessionsData.length) {
+      setSelectedSessionsForDelete([]);
+    } else {
+      setSelectedSessionsForDelete(filteredSessionsData.map(session => session._id));
+    }
+  };
+
+  // Handle bulk session delete confirmation
+  const handleBulkSessionDeleteConfirm = async () => {
+    if (selectedSessionsForDelete.length === 0) {
+      alert('❌ Please select at least one session to delete.');
+      return;
+    }
+
+    console.log('🔄 Bulk deleting sessions:', selectedSessionsForDelete);
+    setIsDeletingSessions(true);
+
+    try {
+      const API_BASE_URL = process.env.REACT_APP_DESKTOP_API || 'http://localhost:5001';
+      const authToken = localStorage.getItem('authToken');
+      
+      // Delete sessions one by one
+      let successCount = 0;
+      let errorCount = 0;
+      
+      for (const sessionId of selectedSessionsForDelete) {
+        try {
+          console.log('🌐 Deleting session:', sessionId);
+          
+          const res = await fetch(`${API_BASE_URL}/api/admin/sessions/${sessionId}`, {
+            method: 'DELETE',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${authToken}`
+            }
+          });
+
+          if (res.ok) {
+            successCount++;
+            console.log('✅ Session deleted successfully:', sessionId);
+          } else {
+            errorCount++;
+            console.log('❌ Failed to delete session:', sessionId);
+          }
+        } catch (error) {
+          errorCount++;
+          console.error('❌ Error deleting session:', sessionId, error);
+        }
+      }
+
+      // Show results
+      if (successCount > 0) {
+        alert(`✅ Successfully deleted ${successCount} session(s)!\n${errorCount > 0 ? `❌ Failed to delete ${errorCount} session(s).` : ''}`);
+        
+        // Close modal and refresh data
+        setSessionDeleteModalOpen(false);
+        setSelectedSessionsForDelete([]);
+        
+        // Refresh session data
+        if (authToken) {
+          fetchAllData(authToken);
+        }
+      } else {
+        alert(`❌ Failed to delete any sessions. Please try again.`);
+      }
+      
+    } catch (error) {
+      console.error('💥 Bulk session delete error:', error);
+      alert('❌ Connection Error\n\nPlease check your internet connection and try again');
+    } finally {
+      setIsDeletingSessions(false);
+    }
+  };
+
+  // Reset session delete form
+  const resetSessionDeleteForm = () => {
+    setSelectedSessionsForDelete([]);
+  };
+
   // Handle notification export button click
   const handleNotificationExportClick = () => {
     console.log('🔍 Notification export clicked');
@@ -1713,6 +1818,29 @@ function HomeDashboard() {
     } else {
       setError('No authentication token found. Please login again.');
       setLoading(false);
+    }
+
+    // Setup auto-update listeners
+    if (ipcRenderer) {
+      ipcRenderer.on('update-status', (event, data) => {
+        console.log('🔍 Update status received:', data);
+        setUpdateStatus(data);
+        
+        if (data.status === 'available') {
+          setShowUpdateModal(true);
+        }
+      });
+
+      ipcRenderer.on('update-progress', (event, data) => {
+        console.log('📥 Update progress received:', data);
+        setUpdateProgress(data);
+      });
+
+      // Cleanup listeners
+      return () => {
+        ipcRenderer.removeAllListeners('update-status');
+        ipcRenderer.removeAllListeners('update-progress');
+      };
     }
   }, []);
 
@@ -2791,6 +2919,12 @@ function HomeDashboard() {
               <div className="section-header">
                 <h2>⏱️ Active Sessions</h2>
                 <div className="section-actions">
+                  <button 
+                    className="delete-sessions-btn"
+                    onClick={() => setSessionDeleteModalOpen(true)}
+                  >
+                    🗑️ Delete Sessions
+                  </button>
                   <button className="filter-btn">
                     🔍 Filter Sessions
                   </button>
@@ -3830,6 +3964,234 @@ function HomeDashboard() {
                   `🗑️ Delete ${selectedScansForDelete.length} Screen${selectedScansForDelete.length !== 1 ? 's' : ''}`
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Session Delete Modal */}
+      {sessionDeleteModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content bulk-delete-modal">
+            <div className="modal-header">
+              <h2>🗑️ Delete Sessions</h2>
+              <button 
+                className="modal-close-btn"
+                onClick={() => {
+                  setSessionDeleteModalOpen(false);
+                  resetSessionDeleteForm();
+                }}
+                disabled={isDeletingSessions}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              <div className="delete-warning">
+                <div className="warning-icon">⚠️</div>
+                <h3>Select Sessions to Delete</h3>
+                <p>Choose the sessions you want to permanently delete from the system. This action cannot be undone.</p>
+              </div>
+              
+              <div className="bulk-delete-controls">
+                <div className="select-all-section">
+                  <label className="select-all-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={selectedSessionsForDelete.length === filteredSessionsData.length && filteredSessionsData.length > 0}
+                      onChange={handleSelectAllSessions}
+                      disabled={isDeletingSessions}
+                    />
+                    <span className="checkbox-label">
+                      Select All ({filteredSessionsData.length} sessions)
+                    </span>
+                  </label>
+                  <span className="selected-count">
+                    {selectedSessionsForDelete.length} of {filteredSessionsData.length} selected
+                  </span>
+                </div>
+              </div>
+              
+              <div className="sessions-selection-list">
+                <h4>⏱️ Available Sessions</h4>
+                {filteredSessionsData.length === 0 ? (
+                  <div className="no-sessions">
+                    <p>No sessions available for deletion.</p>
+                  </div>
+                ) : (
+                  <div className="sessions-grid">
+                    {filteredSessionsData.map((session) => (
+                      <div key={session._id} className="session-selection-card">
+                        <label className="session-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={selectedSessionsForDelete.includes(session._id)}
+                            onChange={() => handleSessionSelection(session._id)}
+                            disabled={isDeletingSessions}
+                          />
+                          <span className="checkbox-custom"></span>
+                        </label>
+                        
+                        <div className="session-info">
+                          <div className="session-header">
+                            <span className="session-id">Session {session._id?.slice(-8)}</span>
+                            <span className={`session-status ${session.endTime ? 'completed' : 'active'}`}>
+                              {session.endTime ? '✅ Completed' : '🔄 Active'}
+                            </span>
+                          </div>
+                          
+                          <div className="session-details">
+                            <span className="session-technician">
+                              👨‍💼 {session.technician || 'Unknown'}
+                            </span>
+                            <span className="session-department">
+                              🏢 {session.department || 'Unknown'}
+                            </span>
+                            <span className="session-scans">
+                              📱 {session.scanCount || 0} scans
+                            </span>
+                            <span className="session-time">
+                              🕐 {new Date(session.startTime).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="modal-footer">
+              <button 
+                className="modal-btn secondary"
+                onClick={() => {
+                  setSessionDeleteModalOpen(false);
+                  resetSessionDeleteForm();
+                }}
+                disabled={isDeletingSessions}
+              >
+                Cancel
+              </button>
+              <button 
+                className="modal-btn danger"
+                onClick={handleBulkSessionDeleteConfirm}
+                disabled={isDeletingSessions || selectedSessionsForDelete.length === 0}
+              >
+                {isDeletingSessions ? (
+                  <>
+                    <span className="loading-spinner"></span>
+                    Deleting Sessions...
+                  </>
+                ) : (
+                  `🗑️ Delete ${selectedSessionsForDelete.length} Session${selectedSessionsForDelete.length !== 1 ? 's' : ''}`
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Auto-Update Modal */}
+      {showUpdateModal && updateStatus && (
+        <div className="modal-overlay">
+          <div className="modal-content update-modal">
+            <div className="modal-header">
+              <h2>🔄 Auto-Update</h2>
+              <button 
+                className="modal-close-btn"
+                onClick={() => setShowUpdateModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              {updateStatus.status === 'checking' && (
+                <div className="update-status">
+                  <div className="update-icon">🔍</div>
+                  <h3>Checking for Updates</h3>
+                  <p>Please wait while we check for the latest version...</p>
+                  <div className="loading-spinner"></div>
+                </div>
+              )}
+
+              {updateStatus.status === 'available' && (
+                <div className="update-status">
+                  <div className="update-icon">✅</div>
+                  <h3>Update Available!</h3>
+                  <p>Version {updateStatus.version} is available for download.</p>
+                  {updateStatus.releaseNotes && (
+                    <div className="release-notes">
+                      <h4>What's New:</h4>
+                      <p>{updateStatus.releaseNotes}</p>
+                    </div>
+                  )}
+                  <button 
+                    className="modal-btn primary"
+                    onClick={() => {
+                      if (ipcRenderer) {
+                        ipcRenderer.invoke('download-update');
+                      }
+                      setShowUpdateModal(false);
+                    }}
+                  >
+                    📥 Download Update
+                  </button>
+                </div>
+              )}
+
+              {updateStatus.status === 'downloaded' && (
+                <div className="update-status">
+                  <div className="update-icon">🎉</div>
+                  <h3>Update Ready!</h3>
+                  <p>Version {updateStatus.version} has been downloaded and is ready to install.</p>
+                  <button 
+                    className="modal-btn primary"
+                    onClick={() => {
+                      if (ipcRenderer) {
+                        ipcRenderer.invoke('install-update');
+                      }
+                    }}
+                  >
+                    🔄 Restart & Install
+                  </button>
+                </div>
+              )}
+
+              {updateStatus.status === 'error' && (
+                <div className="update-status">
+                  <div className="update-icon">❌</div>
+                  <h3>Update Error</h3>
+                  <p>{updateStatus.message}</p>
+                  <button 
+                    className="modal-btn secondary"
+                    onClick={() => setShowUpdateModal(false)}
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
+
+              {updateProgress && (
+                <div className="update-progress">
+                  <div className="progress-header">
+                    <span>Downloading Update...</span>
+                    <span>{Math.round(updateProgress.percent)}%</span>
+                  </div>
+                  <div className="progress-bar">
+                    <div 
+                      className="progress-fill" 
+                      style={{width: `${updateProgress.percent}%`}}
+                    ></div>
+                  </div>
+                  <div className="progress-details">
+                    <span>Speed: {Math.round(updateProgress.speed / 1024 / 1024 * 100) / 100} MB/s</span>
+                    <span>Downloaded: {Math.round(updateProgress.transferred / 1024 / 1024 * 100) / 100} MB</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
