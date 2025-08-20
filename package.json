@@ -1,6 +1,6 @@
 {
   "name": "embroidery-desktop",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "EmbroideryTech Desktop Management Application",
   "main": "src/main.js",
   "homepage": "./",
