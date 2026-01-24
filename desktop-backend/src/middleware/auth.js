@@ -6,7 +6,7 @@ import bcrypt from 'bcryptjs';
 const getJwtSecret = () => {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
-    console.error('❌ JWT_SECRET is not defined');
+    console.error('requireAuth init: JWT_SECRET is not defined');
     throw new Error('JWT_SECRET is not defined in environment variables');
   }
   return secret;
@@ -27,22 +27,22 @@ let hashedPasswords = {};
 ADMIN_USERS.forEach(user => {
   bcrypt.hash(user.password, 10).then(hash => {
     hashedPasswords[user.username] = hash;
-    console.log(`✅ Admin password hashed for ${user.username}`);
+    console.log(`ƒo. Admin password hashed for ${user.username}`);
   }).catch(err => {
-    console.error(`❌ Failed to hash admin password for ${user.username}:`, err);
+    console.error(`ƒ?O Failed to hash admin password for ${user.username}:`, err);
   });
 });
-
-
 
 export const requireAuth = (req, res, next) => {
   try {
     const auth = req.headers.authorization;
     if (!auth?.startsWith('Bearer ')) {
+      console.warn('requireAuth missing/invalid Authorization header', { authorization: auth });
       return res.status(401).json({ error: 'Missing or invalid Authorization header' });
     }
 
     const token = auth.split(' ')[1];
+    console.log('requireAuth verifying token snippet', { tokenSnippet: token?.slice(0, 10) });
     const payload = jwt.verify(token, getJwtSecret());
     
     if (!payload || typeof payload.username !== 'string') {
@@ -52,7 +52,7 @@ export const requireAuth = (req, res, next) => {
     req.user = payload;
     return next();
   } catch (err) {
-    console.error('❌ requireAuth error:', err);
+    console.error('requireAuth middleware failed', err);
     return res.status(403).json({ error: 'Invalid or expired token' });
   }
 };
@@ -69,7 +69,7 @@ export const requireAdmin = (req, res, next) => {
 
     return next();
   } catch (err) {
-    console.error('❌ requireAdmin error:', err);
+    console.error('ƒ?O requireAdmin error:', err);
     return res.status(500).json({ error: 'Server error' });
   }
 };
@@ -78,17 +78,18 @@ export const login = async (req, res) => {
   try {
     const { username, password } = req.body;
 
+    console.log('Login attempt', { username });
+
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password required' });
     }
 
-    // Find admin user
     const adminUser = ADMIN_USERS.find(user => user.username === username);
     if (!adminUser || !hashedPasswords[username]) {
+      console.warn('Login failed: invalid credentials', { username });
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Check password
     const isValidPassword = await bcrypt.compare(password, hashedPasswords[username]);
     
     if (isValidPassword) {
@@ -102,6 +103,8 @@ export const login = async (req, res) => {
         { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
       );
 
+      console.log('Login successful, issuing token', { username: adminUser.username });
+
       return res.json({
         message: 'Login successful',
         token,
@@ -113,9 +116,10 @@ export const login = async (req, res) => {
       });
     }
 
+    console.warn('Login failed: bad password', { username });
     return res.status(401).json({ error: 'Invalid credentials' });
   } catch (err) {
-    console.error('❌ Login error:', err);
+    console.error('ƒ?O Login error:', err);
     return res.status(500).json({ error: 'Server error' });
   }
 };
@@ -130,7 +134,7 @@ export const getProfile = (req, res) => {
       }
     });
   } catch (err) {
-    console.error('❌ Get profile error:', err);
+    console.error('ƒ?O Get profile error:', err);
     return res.status(500).json({ error: 'Server error' });
   }
 };
@@ -139,24 +143,20 @@ export const registerAdmin = async (req, res) => {
   try {
     const { username, password, email, name, surname, department } = req.body;
 
-    // Validate required fields
     if (!username || !password || !email) {
       return res.status(400).json({ error: 'Username, password, and email are required' });
     }
 
-    // Check if username already exists
     const existingUser = ADMIN_USERS.find(user => user.username === username);
     if (existingUser) {
       return res.status(409).json({ error: 'Username already exists' });
     }
 
-    // Check if email already exists
     const existingEmail = ADMIN_USERS.find(user => user.email === email);
     if (existingEmail) {
       return res.status(409).json({ error: 'Email already exists' });
     }
 
-    // Create new admin user
     const newAdminUser = {
       username,
       password,
@@ -167,14 +167,12 @@ export const registerAdmin = async (req, res) => {
       role: 'admin'
     };
 
-    // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
     hashedPasswords[username] = hashedPassword;
 
-    // Add to admin users array
     ADMIN_USERS.push(newAdminUser);
 
-    console.log(`✅ New admin user registered: ${username}`);
+    console.log(`ƒo. New admin user registered: ${username}`);
 
     return res.status(201).json({
       message: 'Admin user registered successfully',
@@ -189,7 +187,7 @@ export const registerAdmin = async (req, res) => {
     });
 
   } catch (err) {
-    console.error('❌ Register admin error:', err);
+    console.error('ƒ?O Register admin error:', err);
     return res.status(500).json({ error: 'Server error' });
   }
 };

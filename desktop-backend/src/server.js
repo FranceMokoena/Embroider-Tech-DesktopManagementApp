@@ -1,6 +1,6 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
@@ -12,8 +12,6 @@ import reportsRoutes from './routes/reports.js';
 import messagingRoutes from './routes/messaging.js';
 import dashboardRoutes from './routes/dashboard.js';
 import databaseRoutes from './routes/database.js';
-
-dotenv.config();
 
 const PORT = process.env.PORT || 5001;
 const app = express();
@@ -31,17 +29,35 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // CORS configuration
-const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
+const defaultAllowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:3002',
   'http://localhost:3003',
   'http://localhost:19006'
 ];
+const allowedHostPrefixes = ['http://localhost', 'http://127.0.0.1', 'http://0.0.0.0'];
+const normalizeOrigin = (origin) => origin?.trim().toLowerCase().replace(/\/$/, '');
+
+const allowedOrigins = (
+  process.env.ALLOWED_ORIGINS
+    ?.split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean) || defaultAllowedOrigins
+).map(origin => normalizeOrigin(origin) ?? origin);
+
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
+  const normalized = normalizeOrigin(origin);
+  if (allowedOrigins.includes(normalized)) {
+    return true;
+  }
+  return allowedHostPrefixes.some(prefix => normalized?.startsWith(prefix));
+};
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (isAllowedOrigin(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));

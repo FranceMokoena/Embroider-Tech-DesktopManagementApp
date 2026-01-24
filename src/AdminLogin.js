@@ -1,10 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from './context/ToastContext';
 import './AdminLogin.css';
 
-// Use environment variable or fallback to local URL
 const DESKTOP_API = process.env.REACT_APP_DESKTOP_API || 'http://localhost:5001';
+const heroImage = require('./assets/loginIMG.png');
+const typingPhrases = [
+  'Precision. Integrity. Embroidery oversight with no compromises.',
+  'Secure access for the teams protecting vital garment assets.',
+  'Documented compliance, modern delivery, and trusted outcomes.'
+];
+const phraseCount = typingPhrases.length;
 
 function AdminLogin() {
   const navigate = useNavigate();
@@ -13,6 +19,36 @@ function AdminLogin() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [charIndex, setCharIndex] = useState(0);
+  const [phraseIndex, setPhraseIndex] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const currentPhrase = typingPhrases[phraseIndex];
+  const typedText = currentPhrase.slice(0, charIndex);
+
+  useEffect(() => {
+    let timeout;
+
+    if (!isDeleting && charIndex === currentPhrase.length) {
+      timeout = setTimeout(() => setIsDeleting(true), 2000);
+      return () => clearTimeout(timeout);
+    }
+
+    if (isDeleting && charIndex === 0) {
+      timeout = setTimeout(() => {
+        setIsDeleting(false);
+        setPhraseIndex(prev => (prev + 1) % phraseCount);
+      }, 600);
+      return () => clearTimeout(timeout);
+    }
+
+    const delta = isDeleting ? 60 : 110;
+    timeout = setTimeout(() => {
+      setCharIndex(prev => prev + (isDeleting ? -1 : 1));
+    }, delta);
+
+    return () => clearTimeout(timeout);
+  }, [charIndex, currentPhrase.length, isDeleting, phraseIndex, phraseCount]);
 
   const togglePassword = () => setShowPassword(prev => !prev);
 
@@ -32,12 +68,14 @@ function AdminLogin() {
       if (!response.ok) {
         error(data.error || 'Login failed. Please check your credentials.');
       } else {
-        localStorage.setItem('authToken', data.token);
-        localStorage.setItem('adminUsername', data.user.username);
+      localStorage.setItem('adminToken', data.token);
+      sessionStorage.setItem('adminTokenBackup', data.token);
+      localStorage.setItem('adminUsername', data.user.username);
+      sessionStorage.setItem('adminUsernameBackup', data.user.username);
 
         success('Login successful! Redirecting to dashboard...', 2000);
         setTimeout(() => {
-          navigate('/home-dashboard');
+          navigate('/dashboard');
         }, 1500);
       }
     } catch (err) {
@@ -49,50 +87,77 @@ function AdminLogin() {
   };
 
   return (
-    <div className="AdminApp">
-      <header className="Admin-header">
-        <h1 className="login-title">
-          <span className="lock-emoji">🔒</span>
-          Admin Login
-        </h1>
+    <div className="login-shell">
+      <div className="hero-panel">
+        <div className="hero-image-wrapper">
+          <img className="hero-image" src={heroImage} alt="Company embroidery illustration" />
+        </div>
+        <p className="hero-tagline hero-tagline-below-image">Welcome to
+CK Embroideries</p>
+        <div className="hero-text">
+          <h2>Official Admin Access</h2>
+          <p className="typing-line">
+            {typedText}
+            <span className="typing-cursor" aria-hidden="true"></span>
+          </p>
+          <p className="hero-subtext">
+            We pride ourselves in being professional and offering all our clients the best products and services you could need.
+          </p>
+        </div>
+      </div>
 
-        <form onSubmit={handleLogin} className="login-form">
-          <input
-            type="text"
-            placeholder="Username"
-            value={username}
-            onChange={e => setUsername(e.target.value)}
-            required
-          />
+      <div className="form-panel">
+        <div className="form-card">
+          <p className="eyebrow-text">Priority Access</p>
+          <h1 className="form-title">Administrative Login</h1>
 
-          <div className="password-wrapper">
+          <form onSubmit={handleLogin} className="login-form">
+            <label className="sr-only" htmlFor="admin-username">
+              Username
+            </label>
             <input
-              type={showPassword ? 'text' : 'password'}
-              placeholder="Password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
+              id="admin-username"
+              type="text"
+              placeholder="Username"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
               required
+              autoComplete="username"
             />
-            <span className="toggle-password" onClick={togglePassword}>
-              {showPassword ? '🙈' : '👀'}
-            </span>
-          </div>
 
-          <button type="submit" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
+            <div className="password-wrapper">
+              <label className="sr-only" htmlFor="admin-password">
+                Password
+              </label>
+              <input
+                id="admin-password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                className="toggle-password"
+                onClick={togglePassword}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
 
-        <p style={{ marginTop: '15px', fontSize: '14px', color: '#555' }}>
-          New admin?{' '}
-          <span
-            style={{ color: '#2c3e50', cursor: 'pointer', textDecoration: 'underline' }}
-            onClick={() => navigate('/admin-register')}
-          >
-            Register here
-          </span>
-        </p>
-      </header>
+            <button type="submit" disabled={loading}>
+              {loading ? 'Authenticating…' : 'Secure Login'}
+            </button>
+          </form>
+
+          <p className="helper-text">
+            Need access? Contact EmbroideryTech compliance to provision your user.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

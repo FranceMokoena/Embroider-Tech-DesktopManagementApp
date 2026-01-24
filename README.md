@@ -211,6 +211,20 @@ Enable debug logging by setting `NODE_ENV=development` in the environment variab
 - **Export scheduling** for automated report generation
 - **Mobile app integration** for push notifications
 
+## Token Strategy
+
+- **Desktop frontend token storage**
+  - `localStorage.adminToken` stores the admin JWT returned by `/admin-login`; `RequireAuth` validates this key before rendering the AppShell.
+  - `localStorage.mobileToken` (optional) stores the mobile token used by endpoints such as `/api/departments`; if it is missing, the client falls back to `DESKTOP_SERVICE_TOKEN=franceman99`.
+- **Environment defaults**
+  - Make sure `REACT_APP_DESKTOP_API` and `REACT_APP_MOBILE_API` both target `http://localhost:5001` (or the deployed mobile API host) so desktop requests hit the same Express server.
+  - `REACT_APP_DESKTOP_SERVICE_TOKEN` / `DESKTOP_SERVICE_TOKEN` default to `franceman99`, allowing an Authorization header even before login completes.
+- **Client behavior**
+  - `apiClient.buildHeaders` now switches between the mobile token (for `/api/departments`) and the admin token (for `/api/admin/*`), preventing “Invalid or expired token” errors on dashboard and technician screens.
+  - Seed quick tests by running `localStorage.setItem('mobileToken', 'franceman99')` or log in to persist `localStorage.adminToken`.
+
+These notes capture the token strategy that fixed the department/dashboard/technician flows while remaining safe for production.
+
 ## 🤝 Contributing
 
 1. Fork the repository
@@ -226,3 +240,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ---
 
 **Note**: This desktop application is designed to work in conjunction with the Embroidery Tech mobile application. Ensure the mobile backend is properly configured and running before using this desktop admin dashboard.
+
+
+
+

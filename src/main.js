@@ -1,7 +1,13 @@
 const { app, BrowserWindow, globalShortcut, Menu, ipcMain, dialog } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
+const dotenv = require('dotenv');
 const isDev = require('electron-is-dev');
+
+const rootEnvPath = path.resolve(__dirname, '..', '.env');
+dotenv.config({ path: rootEnvPath });
+const devServerPort = process.env.PORT || 3000;
+const electronDevUrl = process.env.ELECTRON_DEV_URL || `http://localhost:${devServerPort}`;
 
 let mainWindow;
 
@@ -59,12 +65,32 @@ function createWindow() {
 
   // Load React app URL in dev, or the build index.html in production
   if (isDev) {
-    mainWindow.loadURL('http://localhost:3000');
+    mainWindow.loadURL(electronDevUrl);
     // Completely disable dev tools even in development for testing
     // mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, '../build/index.html'));
   }
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainWindow.webContents.executeJavaScript(`
+      const tokenCleared = sessionStorage.getItem('adminTokenCleared');
+      const backupToken = sessionStorage.getItem('adminTokenBackup');
+      if (!tokenCleared) {
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminUsername');
+        sessionStorage.removeItem('adminTokenBackup');
+        sessionStorage.removeItem('adminUsernameBackup');
+        sessionStorage.setItem('adminTokenCleared', '1');
+      } else if (!localStorage.getItem('adminToken') && backupToken) {
+        localStorage.setItem('adminToken', backupToken);
+        const usernameBackup = sessionStorage.getItem('adminUsernameBackup');
+        if (usernameBackup && !localStorage.getItem('adminUsername')) {
+          localStorage.setItem('adminUsername', usernameBackup);
+        }
+      }
+    `, true);
+  });
 
   // Remove menu bar completely for cleaner look
   Menu.setApplicationMenu(null);
@@ -117,8 +143,9 @@ function createWindow() {
   // Prevent navigation to external URLs
   mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
     const parsedUrl = new URL(navigationUrl);
+    const devOrigin = isDev ? new URL(electronDevUrl).origin : undefined;
     
-    if (isDev && parsedUrl.origin === 'http://localhost:3000') {
+    if (isDev && parsedUrl.origin === devOrigin) {
       return; // Allow localhost in development
     }
     

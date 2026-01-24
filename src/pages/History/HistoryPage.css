@@ -1,0 +1,112 @@
+.history-page {
+  gap: 20px;
+}
+
+.history-list__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #475569;
+}
+
+.history-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history-table__row {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-radius: 10px;
+  align-items: center;
+  font-size: 12px;
+  color: #0f172a;
+}
+
+.history-table__row--head {
+  background: transparent;
+  font-weight: 600;
+  color: #475569;
+}
+
+.history-table__row:nth-child(odd) {
+  background: #fff;
+}
+
+.history-table__row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-list__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.history-table__row {
+  position: relative;
+}
+
+.history-table__delete {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 16px;
+  color: #ef4444;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  cursor: pointer;
+}
+
+.history-table__row:hover .history-table__delete,
+.history-table__row .history-table__delete:focus-visible {
+  opacity: 1;
+}
+
+.history-table__delete:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.tiny-button {
+  border: none;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  background: #e2e8f0;
+  color: #0f172a;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tiny-button--ghost {
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+}
+
+@media (max-width: 720px) {
+  .history-table__row {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    font-size: 11px;
+  }
+
+  .history-table__row--head {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

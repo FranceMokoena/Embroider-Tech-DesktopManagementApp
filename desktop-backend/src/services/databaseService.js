@@ -13,8 +13,18 @@ class DatabaseService {
   async connect() {
     try {
       // Use the correct connection string and database name from the guide
-      const uri = process.env.MONGO_URI || 'mongodb+srv://France:FranceMan99@screenscannertechdetail.ac4f8mr.mongodb.net/?retryWrites=true&w=majority&appName=ScreenScannerTechDetails';
-      const dbName = 'test'; // The data is stored in the 'test' database, not ScreenScannerTechDetails
+      const uri =
+        process.env.MONGO_URI ||
+        'mongodb+srv://France:FranceMan99@screenscannertechdetail.ac4f8mr.mongodb.net/?retryWrites=true&w=majority&appName=ScreenScannerTechDetails';
+      const defaultDbName = (() => {
+        try {
+          const withoutParams = uri.split('?')[0];
+          return withoutParams.substring(withoutParams.lastIndexOf('/') + 1) || 'EmbronderiesDB';
+        } catch {
+          return 'EmbronderiesDB';
+        }
+      })();
+      const dbName = process.env.MONGO_DB_NAME || defaultDbName;
 
       console.log('🔍 Checking environment variables...');
       console.log('URI exists:', !!uri);

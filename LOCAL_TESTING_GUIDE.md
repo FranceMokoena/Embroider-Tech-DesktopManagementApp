@@ -16,11 +16,12 @@ npm run install-all
 ```bash
 npm run dev
 ```
-
 This will:
 - Start the backend server on port 5001
-- Start the React development server on port 3000
+- Start the React development server on port 5000
 - Launch the Electron desktop application
+
+`npm run backend` now uses the backend's `dev` script (nodemon) so server changes reload automatically, and `npm run dev` waits for both `http://localhost:5000` (React) and `http://localhost:5001` (backend) before opening the desktop UI so the API and web UI are ready.
 
 ## Alternative Testing Methods
 
@@ -28,7 +29,7 @@ This will:
 ```bash
 npm start
 ```
-- Runs only the React frontend on http://localhost:3000
+- Runs only the React frontend on http://localhost:5000
 - Good for testing UI components without Electron
 
 ### Method 2: Backend-Only Testing
@@ -36,6 +37,7 @@ npm start
 npm run backend
 ```
 - Runs only the backend API on http://localhost:5001
+- Uses nodemon via `desktop-backend`'s `dev` script, so the API reloads on file changes.
 - Good for testing API endpoints
 
 ### Method 3: Electron with Development Server

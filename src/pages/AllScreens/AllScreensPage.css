@@ -1,0 +1,126 @@
+.all-screens-page {
+  gap: 20px;
+}
+
+.all-screens-table__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.all-screens-table__row {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  padding: 12px;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 12px;
+  gap: 6px;
+  position: relative;
+}
+
+.all-screens-table__row.head {
+  background: transparent;
+  font-weight: 600;
+  color: #475569;
+}
+
+.all-screens-table__row:nth-child(odd) {
+  background: #fff;
+}
+
+.all-screens-table__row span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.all-screens-table__row .all-screens-table__delete {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 16px;
+  color: #ef4444;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  cursor: pointer;
+}
+
+.all-screens-table__row:hover .all-screens-table__delete,
+.all-screens-table__row .all-screens-table__delete:focus-visible {
+  opacity: 1;
+}
+
+.all-screens-table__delete:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.all-screens-table__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #475569;
+  margin-bottom: 14px;
+}
+
+.all-screens-table__header-meta {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #475569;
+  margin-top: 4px;
+}
+
+.all-screens-table__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.all-screens-toolbar {
+  display: flex;
+  gap: 6px;
+}
+
+.tiny-button {
+  border: none;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  background: #e2e8f0;
+  color: #0f172a;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tiny-button--active {
+  background: #0f172a;
+  color: #fff;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.2);
+}
+
+.tiny-button--ghost {
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+}
+
+@media (max-width: 880px) {
+  .all-screens-table__row,
+  .all-screens-table__row.head {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

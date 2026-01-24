@@ -13,6 +13,7 @@ out/
 
 # environment files
 .env
+.env.production
 .env.local
 .env.development.local
 .env.test.local
