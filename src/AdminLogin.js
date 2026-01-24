@@ -4,7 +4,7 @@ import { useToast } from './context/ToastContext';
 import './AdminLogin.css';
 
 const DESKTOP_API = process.env.REACT_APP_DESKTOP_API || 'http://localhost:5001';
-const heroImage = require('./assets/loginIMG.png');
+const heroImage = require('./assets/Amrod.jpg');
 const typingPhrases = [
   'Precision. Integrity. Embroidery oversight with no compromises.',
   'Secure access for the teams protecting vital garment assets.',
@@ -93,7 +93,7 @@ function AdminLogin() {
           <img className="hero-image" src={heroImage} alt="Company embroidery illustration" />
         </div>
         <p className="hero-tagline hero-tagline-below-image">Welcome to
-CK Embroideries</p>
+ Embroideries Screen Management</p>
         <div className="hero-text">
           <h2>Official Admin Access</h2>
           <p className="typing-line">

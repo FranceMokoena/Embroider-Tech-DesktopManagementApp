@@ -1,5 +1,4 @@
 const API_BASE = process.env.REACT_APP_DESKTOP_API || 'http://localhost:5001';
-const MOBILE_API_BASE = process.env.REACT_APP_MOBILE_API || 'http://localhost:5001';
 const DEFAULT_DESKTOP_TOKEN = process.env.REACT_APP_DESKTOP_SERVICE_TOKEN || 'franceman99';
 const MOBILE_TOKEN_KEY = 'mobileToken';
 const ADMIN_TOKEN_KEY = 'adminToken';
@@ -54,12 +53,6 @@ const request = (path, options = {}, opts = {}) =>
     headers: buildHeaders(options.headers, opts.useMobileToken ?? true)
   }).then(handleResponse);
 
-const requestWithBase = (base, path, options = {}, opts = {}) =>
-  fetch(`${base}${path}`, {
-    ...options,
-    headers: buildHeaders(options.headers, opts.useMobileToken ?? true)
-  }).then(handleResponse);
-
 const buildQueryString = (params = {}) => {
   const search = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
@@ -105,53 +98,27 @@ export const deleteUser = (id) =>
     { useMobileToken: false }
   );
 
-export const getDepartments = () => requestWithBase(MOBILE_API_BASE, '/api/departments');
+export const getDepartments = () => request('/api/admin/departments', {}, { useMobileToken: false });
 
 export const createDepartment = (payload) =>
-  requestWithBase(MOBILE_API_BASE, '/api/departments', {
-    method: 'POST',
-    body: JSON.stringify(payload)
-  });
+  request(
+    '/api/admin/departments',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    },
+    { useMobileToken: false }
+  );
 
 export const getSessions = (params = {}) =>
-  requestWithBase(
-    MOBILE_API_BASE,
-    `/api/scan/history/all${buildQueryString(params)}`,
-    {},
-    { useMobileToken: true }
-  );
-
-export const getProductionScans = (params = {}) =>
-  requestWithBase(
-    MOBILE_API_BASE,
-    `/api/scan/production${buildQueryString(params)}`,
-    {},
-    { useMobileToken: true }
-  );
-
-export const getRepairScans = (params = {}) =>
-  requestWithBase(
-    MOBILE_API_BASE,
-    `/api/scan/repair${buildQueryString(params)}`,
-    {},
-    { useMobileToken: true }
-  );
-
-export const getWriteOffScans = (params = {}) =>
-  requestWithBase(
-    MOBILE_API_BASE,
-    `/api/scan/write-offs${buildQueryString(params)}`,
-    {},
-    { useMobileToken: true }
-  );
+  request(`/api/admin/sessions${buildQueryString(params)}`, {}, { useMobileToken: false });
 
 export const deleteScreens = (payload = { barcodes: [] }) =>
-  requestWithBase(
-    MOBILE_API_BASE,
-    '/api/scan/delete',
+  request(
+    '/api/admin/screens',
     {
       method: 'DELETE',
       body: JSON.stringify(payload)
     },
-    { useMobileToken: true }
+    { useMobileToken: false }
   );

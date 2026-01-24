@@ -91,6 +91,15 @@ const deriveDepartmentLabel = (department = {}) => {
   return 'Unknown Department';
 };
 
+const resolveDepartmentsResponse = (response) => {
+  if (!response) return [];
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response.departments)) return response.departments;
+  if (Array.isArray(response.data?.departments)) return response.data.departments;
+  if (Array.isArray(response.data)) return response.data;
+  return [];
+};
+
 export default function DashboardPage() {
   const [dashboardData, setDashboardData] = useState(EMPTY_STATS);
   const [loading, setLoading] = useState(true);
@@ -115,11 +124,7 @@ export default function DashboardPage() {
 
         setDashboardData(statsResponse?.data ?? EMPTY_STATS);
 
-        const deptPayload =
-          (departmentsResponse?.departments &&
-            Array.isArray(departmentsResponse.departments) &&
-            departmentsResponse.departments) ||
-          (Array.isArray(departmentsResponse) ? departmentsResponse : []);
+        const deptPayload = resolveDepartmentsResponse(departmentsResponse);
         setDepartmentList(deptPayload);
 
         const sessions = extractSessionsFromResponse(sessionResponse);

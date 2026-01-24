@@ -1,6 +1,6 @@
 {
   "name": "embroidery-desktop",
-  "version": "1.0.3",
+  "version": "1.0.6",
   "description": "EmbroideryTech Desktop Management Application",
   "main": "src/main.js",
   "homepage": "./",
@@ -28,7 +28,7 @@
   "build": {
     "appId": "com.embroiderytech.desktop",
     "productName": "EmbroideryTech-Management-System",
-    "copyright": "Copyright © 2024 EmbroideryTech",
+    "copyright": "Copyright © 2026 EmbroideryTech",
     "directories": {
       "output": "dist"
     },

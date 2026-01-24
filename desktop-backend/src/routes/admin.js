@@ -2,6 +2,8 @@ import express from 'express';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import {
   getDashboardStats,
+  getDepartments,
+  createDepartment,
   getAllUsers,
   createUser,
   updateUser,
@@ -10,6 +12,7 @@ import {
   getScanById,
   updateScan,
   deleteScan,
+  deleteScreens,
   archiveScan,
   getAllSessions,
   getSessionById,
@@ -26,6 +29,8 @@ router.use(requireAdmin);
 
 // Dashboard
 router.get('/dashboard', getDashboardStats);
+router.get('/departments', getDepartments);
+router.post('/departments', createDepartment);
 
 // User Management
 router.get('/users', getAllUsers);
@@ -38,6 +43,7 @@ router.get('/scans', getAllScans);
 router.get('/scans/:id', getScanById);
 router.put('/scans/:id', updateScan);
 router.delete('/scans/:id', deleteScan);
+router.delete('/screens', deleteScreens);
 router.post('/scans/:id/archive', archiveScan);
 
 // Session Management

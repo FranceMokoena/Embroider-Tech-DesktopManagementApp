@@ -253,6 +253,33 @@ export const getDashboardStats = async (req, res) => {
   }
 };
 
+export const getDepartments = async (req, res) => {
+  const token = getMobileTokenFromRequest(req, res);
+  if (!token) return;
+
+  try {
+    const payload = await mobileApiService.getDepartments(token);
+    return res.json(payload);
+  } catch (error) {
+    console.error('? Departments fetch error:', error);
+    return res.status(500).json({ error: 'Failed to fetch departments' });
+  }
+};
+
+export const createDepartment = async (req, res) => {
+  const token = getMobileTokenFromRequest(req, res);
+  if (!token) return;
+
+  try {
+    const payload = req.body || {};
+    const result = await mobileApiService.createDepartment(token, payload);
+    return res.status(201).json(result);
+  } catch (error) {
+    console.error('? Create department error:', error);
+    return res.status(500).json({ error: 'Failed to create department' });
+  }
+};
+
 // User Management
 export const getAllUsers = async (req, res) => {
   try {
@@ -500,6 +527,24 @@ export const deleteScan = async (req, res) => {
 
 export const archiveScan = (_req, res) =>
   res.status(501).json({ error: 'Archiving individual scans is handled by the mobile API' });
+
+export const deleteScreens = async (req, res) => {
+  const token = getMobileTokenFromRequest(req, res);
+  if (!token) return;
+
+  try {
+    const payload = req.body || {};
+    const { barcodes } = payload;
+    if (!Array.isArray(barcodes) || barcodes.length === 0) {
+      return res.status(400).json({ error: 'At least one barcode is required' });
+    }
+    const result = await mobileApiService.deleteScreens(token, { barcodes });
+    return res.json(result);
+  } catch (error) {
+    console.error('? Delete screens error:', error);
+    return res.status(500).json({ error: 'Failed to delete screens' });
+  }
+};
 
 // Session Management
 export const getAllSessions = async (req, res) => {

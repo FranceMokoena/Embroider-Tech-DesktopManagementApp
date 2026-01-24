@@ -71,7 +71,7 @@ body {
 .hero-image {
   width: 100%;
   height: 100%;
-  object-fit: cover;          /* 🔑 key */
+  object-fit: fill;          /* 🔑 key */
   object-position: center;    /* 🔑 keep centered */
   filter: saturate(1.2);
 }

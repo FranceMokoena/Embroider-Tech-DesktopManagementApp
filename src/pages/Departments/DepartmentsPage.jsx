@@ -23,6 +23,15 @@ const EMPTY_FORM = {
   locationDetails: ''
 };
 
+const resolveDepartmentList = (response) => {
+  if (!response) return [];
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response.departments)) return response.departments;
+  if (Array.isArray(response.data?.departments)) return response.data.departments;
+  if (Array.isArray(response.data)) return response.data;
+  return [];
+};
+
 export default function DepartmentsPage() {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,7 +51,7 @@ export default function DepartmentsPage() {
     setError(null);
     try {
       const response = await getDepartments();
-      setDepartments(response?.departments ?? []);
+      setDepartments(resolveDepartmentList(response));
     } catch (err) {
       setError(err.message || 'Failed to load departments');
     } finally {
