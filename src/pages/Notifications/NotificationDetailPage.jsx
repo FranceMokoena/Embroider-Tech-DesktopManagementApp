@@ -35,7 +35,9 @@ const STATUS_CONFIG = {
 
 const normalizeStatusValue = (value) => {
   const text = value?.toString().toLowerCase() ?? '';
+  if (text.includes('reparable')) return 'repairable';
   if (text.includes('repairable')) return 'repairable';
+  if (text.includes('written')) return 'beyond repair';
   if (text.includes('beyond')) return 'beyond repair';
   if (text.includes('healthy')) return 'healthy';
   return text;
@@ -142,19 +144,19 @@ export default function NotificationDetailPage() {
   }
 
   return (
-    <div className="page-view">
-      <header className="page-view__header">
+    <div className="page-view notifications-page">
+      <header className="page-view__header notifications-header">
         <div>
           <h2>{config.title}</h2>
           <p>{config.description}</p>
         </div>
-        <div className="sessions-actions">
-          <button type="button" className="pill ghost" onClick={() => navigate('/notifications')}>
+        <div className="notifications-header__actions">
+          <button type="button" className="notification-action notification-action--ghost" onClick={() => navigate('/notifications')}>
             ← Back to Notifications
           </button>
           <button
             type="button"
-            className="pill solid"
+            className="notification-action"
             onClick={handleDeleteAll}
             disabled={deletingAll || !filteredScans.length}
           >
@@ -164,8 +166,8 @@ export default function NotificationDetailPage() {
       </header>
       <section className="notifications-detail">
         <div className="notification-card__header">
-          <span className="notification-card__emoji">{config.emoji}</span>
-          <div>
+          <span className="notification-card__icon">{config.emoji}</span>
+          <div className="notification-card__title">
             <p className="eyebrow-text">{config.title}</p>
             <h3>{filteredScans.length} scan(s) in this category</h3>
           </div>

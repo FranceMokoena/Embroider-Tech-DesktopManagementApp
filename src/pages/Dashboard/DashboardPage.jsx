@@ -150,6 +150,7 @@ export default function DashboardPage() {
     };
   }, []);
 
+
   const screenStats = useMemo(
     () => ({
       healthy: dashboardData.statusBreakdown?.Healthy ?? 0,
@@ -325,6 +326,18 @@ export default function DashboardPage() {
           </button>
         </div>
         <div className="pie-row">
+         <section className="section-card">
+            <div className="section-card__header">
+              <h2>System Snapshot</h2>
+            </div>
+            <TechnicianPie segments={systemSegments} centerLabel="Overview" />
+          </section>
+
+
+
+
+
+
           <section className="section-card">
             <div className="section-card__header">
               <h2>Screen Health Summary</h2>
@@ -332,12 +345,7 @@ export default function DashboardPage() {
             <ScreenHealthPie stats={screenStats} />
           </section>
 
-          <section className="section-card">
-            <div className="section-card__header">
-              <h2>System Snapshot</h2>
-            </div>
-            <TechnicianPie segments={systemSegments} centerLabel="Overview" />
-          </section>
+          
         </div>
 
         <section className="section-card">

@@ -4,10 +4,21 @@ import databaseService from '../services/databaseService.js';
 import mobileApiService from '../services/mobileApiService.js';
 // Direct database access will be implemented here
 
+const CACHE_TTL = Number(process.env.DESKTOP_CACHE_TTL) || 5000;
+const sessionsCache = { timestamp: 0, data: null };
+const departmentsCache = { timestamp: 0, data: null };
+
 const getMobileTokenFromRequest = (req, res) => {
-  const token = req.headers['mobile-token'];
+  const token = req.headers['mobile-token'] || process.env.MOBILE_ADMIN_TOKEN || 'franceman99';
   if (!token) {
-    res.status(401).json({ error: 'Mobile backend token required' });
+    console.warn('[adminController] missing mobile-token header and no default token', {
+      method: req.method,
+      path: req.originalUrl
+    });
+    res.status(401).json({ 
+      error: 'Mobile backend token required',
+      message: 'Please ensure mobile-token header is set or MOBILE_ADMIN_TOKEN environment variable is configured'
+    });
     return null;
   }
   return token;
@@ -142,9 +153,19 @@ export const getMobileToken = async (req, res) => {
       return res.status(500).json({ error: 'Mobile backend token not configured' });
     }
 
+    // Test the connection with this token
+    try {
+      const connectionTest = await mobileApiService.testConnection(mobileToken);
+      console.info('[adminController] Mobile API connection test:', connectionTest);
+    } catch (testError) {
+      console.warn('[adminController] Mobile API connection test failed:', testError.message);
+      // Don't fail the request, but log the warning
+    }
+
     res.json({
       success: true,
-      mobileToken
+      mobileToken,
+      mobileApiUrl: process.env.MOBILE_API_URL || 'https://embroider-scann-app.onrender.com/api'
     });
 
   } catch (error) {
@@ -156,10 +177,40 @@ export const getMobileToken = async (req, res) => {
   }
 };
 
+// Health check endpoint for mobile API
+export const checkMobileApiHealth = async (req, res) => {
+  try {
+    const token = getMobileTokenFromRequest(req, res);
+    if (!token) return;
+    
+    const result = await mobileApiService.testConnection(token);
+    res.json({
+      success: result.success,
+      message: result.message,
+      status: result.status,
+      code: result.code,
+      details: result.details,
+      mobileApiUrl: process.env.MOBILE_API_URL || 'https://embroider-scann-app.onrender.com/api'
+    });
+  } catch (error) {
+    console.error('❌ Mobile API health check error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Health check failed',
+      message: error.message,
+      details: error.details
+    });
+  }
+};
+
 // Dashboard Overview
 export const getDashboardStats = async (req, res) => {
   const token = getMobileTokenFromRequest(req, res);
   if (!token) return;
+  console.info('[adminController] getDashboardStats', {
+    user: req.user?.username,
+    mobileToken: Boolean(token)
+  });
 
   try {
     const history = await mobileApiService.getScanHistory(token, {});
@@ -182,7 +233,33 @@ export const getDashboardStats = async (req, res) => {
       (scan) => new Date(scan.timestamp).getTime() >= sevenDaysAgo
     ).length;
 
-    const departmentStats = sessions.reduce((acc, session) => {
+    // Enrich sessions with department info from users/technicians
+    const usersCollection = await databaseService.getCollection('users');
+    const allUsers = await usersCollection.find({}).toArray();
+    const userMap = new Map();
+    allUsers.forEach(user => {
+      if (user._id) {
+        userMap.set(user._id.toString(), user);
+      }
+    });
+    
+    // Enrich sessions with department from technician
+    const enrichedSessions = sessions.map(session => {
+      const technicianId = getSessionTechnicianKey(session);
+      if (technicianId) {
+        const technician = userMap.get(technicianId.toString()) || 
+                         Array.from(userMap.values()).find(u => 
+                           u.username === technicianId || 
+                           u._id?.toString() === technicianId
+                         );
+        if (technician && technician.department) {
+          return { ...session, department: technician.department };
+        }
+      }
+      return session;
+    });
+    
+    const departmentStats = enrichedSessions.reduce((acc, session) => {
       if (!session.department) return acc;
       const dept = session.department;
       acc[dept] = acc[dept] ?? { department: dept, sessions: 0, scans: 0 };
@@ -192,7 +269,7 @@ export const getDashboardStats = async (req, res) => {
     }, {});
 
     const activeTechnicianKeys = new Set();
-    sessions.forEach((session) => {
+    enrichedSessions.forEach((session) => {
       const key = getSessionTechnicianKey(session);
       if (key) {
         activeTechnicianKeys.add(key);
@@ -202,7 +279,52 @@ export const getDashboardStats = async (req, res) => {
     let departmentDetails = [];
     try {
       const departmentPayload = await mobileApiService.getDepartments(token);
-      departmentDetails = normalizeDepartmentsPayload(departmentPayload);
+      const rawDepartmentDetails = normalizeDepartmentsPayload(departmentPayload);
+      
+      // Merge scan counts from departmentStats into departmentDetails
+      // Create a map of department name to scan count from actual session data
+      const departmentScanCounts = {};
+      Object.values(departmentStats).forEach(stat => {
+        const deptName = stat.department;
+        if (deptName) {
+          departmentScanCounts[deptName] = stat.scans || 0;
+        }
+      });
+      
+      // Update departmentDetails with real scan counts
+      departmentDetails = rawDepartmentDetails.map(dept => {
+        const deptName = dept.name;
+        // Try to find matching department in departmentStats by name
+        const scanCount = departmentScanCounts[deptName] || 
+                         Object.values(departmentStats).find(stat => 
+                           stat.department && stat.department.toLowerCase() === deptName.toLowerCase()
+                         )?.scans || 
+                         dept.value; // Fallback to original value if no match
+        
+        return {
+          name: deptName,
+          value: scanCount
+        };
+      });
+      
+      // Also add departments from sessions that might not be in the API response
+      Object.values(departmentStats).forEach(stat => {
+        const deptName = stat.department;
+        if (deptName && !departmentDetails.find(d => d.name === deptName || d.name.toLowerCase() === deptName.toLowerCase())) {
+          departmentDetails.push({
+            name: deptName,
+            value: stat.scans || 0
+          });
+        }
+      });
+      
+      // Log for debugging
+      console.info('[adminController] Department details calculated:', {
+        totalDepartments: departmentDetails.length,
+        departmentsWithScans: departmentDetails.filter(d => d.value > 0).length,
+        totalScans: departmentDetails.reduce((sum, d) => sum + d.value, 0)
+      });
+      
       if (departmentDetails.length > departmentCount) {
         departmentCount = departmentDetails.length;
       }
@@ -211,23 +333,27 @@ export const getDashboardStats = async (req, res) => {
         departmentCount = payloadCount;
       }
     } catch (err) {
-      console.error('dY"S Dashboard departments fetch error:', err);
+      console.error('❌ Dashboard departments fetch error:', err);
+      // Fallback: create departmentDetails from departmentStats
+      departmentDetails = Object.values(departmentStats).map(stat => ({
+        name: stat.department,
+        value: stat.scans || 0
+      }));
     }
     const activeTechniciansCount = activeTechnicianKeys.size;
 
-    const recentSessions = [...sessions]
+    const recentSessions = [...enrichedSessions]
       .sort((a, b) => new Date(b.startTime || b.start || 0) - new Date(a.startTime || a.start || 0))
       .slice(0, 3);
 
     const recentActivity = {
       lastSessions: recentSessions,
-      lastScans: flattenScans(sessions)
+      lastScans: flattenScans(enrichedSessions)
         .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
         .slice(0, 5)
     };
 
-    const usersCollection = await databaseService.getCollection('users');
-    const totalUsers = await usersCollection.countDocuments();
+    const totalUsers = allUsers.length;
 
     res.json({
       success: true,
@@ -249,7 +375,22 @@ export const getDashboardStats = async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Dashboard stats error:', error);
-    return res.status(500).json({ error: 'Failed to fetch dashboard statistics' });
+    const isNetworkError = error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND';
+    const status = error.response?.status || error.status || 500;
+    
+    if (isNetworkError) {
+      return res.status(503).json({ 
+        error: 'Mobile API connection failed',
+        message: `Cannot connect to mobile backend. Please verify the mobile API is running and accessible at ${process.env.MOBILE_API_URL || 'https://embroider-scann-app.onrender.com/api'}`,
+        details: error.message
+      });
+    }
+    
+    return res.status(status >= 400 && status < 500 ? status : 500).json({ 
+      error: 'Failed to fetch dashboard statistics',
+      message: error.message || 'Unknown error occurred',
+      details: error.response?.data || error.details
+    });
   }
 };
 
@@ -257,12 +398,35 @@ export const getDepartments = async (req, res) => {
   const token = getMobileTokenFromRequest(req, res);
   if (!token) return;
 
+  const now = Date.now();
+  if (departmentsCache.data && now - departmentsCache.timestamp < CACHE_TTL) {
+    console.info('[adminController] getDepartments cache hit');
+    return res.json(departmentsCache.data);
+  }
+
   try {
     const payload = await mobileApiService.getDepartments(token);
+    departmentsCache.data = payload;
+    departmentsCache.timestamp = Date.now();
     return res.json(payload);
   } catch (error) {
-    console.error('? Departments fetch error:', error);
-    return res.status(500).json({ error: 'Failed to fetch departments' });
+    console.error('❌ Departments fetch error:', error);
+    const isNetworkError = error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND';
+    const status = error.response?.status || error.status || 500;
+    
+    if (isNetworkError) {
+      return res.status(503).json({ 
+        error: 'Mobile API connection failed',
+        message: 'Cannot connect to mobile backend to fetch departments',
+        details: error.message
+      });
+    }
+    
+    return res.status(status >= 400 && status < 500 ? status : 500).json({ 
+      error: 'Failed to fetch departments',
+      message: error.message || 'Unknown error occurred',
+      details: error.response?.data
+    });
   }
 };
 
@@ -475,11 +639,33 @@ export const getAllScans = async (req, res) => {
       startDate: req.query.startDate,
       endDate: req.query.endDate
     };
+    console.info('[adminController] getAllScans start', { filters });
+    const startTime = Date.now();
     const result = await mobileApiService.getScanHistory(token, filters);
+    const duration = Date.now() - startTime;
+    console.info('[adminController] getAllScans complete', {
+      duration,
+      sessionsCount: Array.isArray(result?.sessions) ? result.sessions.length : undefined
+    });
     return res.json(result);
   } catch (error) {
     console.error('❌ Get all scans error:', error);
-    return res.status(500).json({ error: 'Failed to fetch scans' });
+    const isNetworkError = error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND';
+    const status = error.response?.status || error.status || 500;
+    
+    if (isNetworkError) {
+      return res.status(503).json({ 
+        error: 'Mobile API connection failed',
+        message: 'Cannot connect to mobile backend to fetch scans',
+        details: error.message
+      });
+    }
+    
+    return res.status(status >= 400 && status < 500 ? status : 500).json({ 
+      error: 'Failed to fetch scans',
+      message: error.message || 'Unknown error occurred',
+      details: error.response?.data
+    });
   }
 };
 
@@ -551,17 +737,47 @@ export const getAllSessions = async (req, res) => {
   const token = getMobileTokenFromRequest(req, res);
   if (!token) return;
 
+  const now = Date.now();
+  if (sessionsCache.data && now - sessionsCache.timestamp < CACHE_TTL) {
+    console.info('[adminController] getAllSessions cache hit');
+    return res.json(sessionsCache.data);
+  }
+
   try {
     const filters = {
       department: req.query.department,
       startDate: req.query.startDate,
       endDate: req.query.endDate
     };
+    console.info('[adminController] getAllSessions start', { filters });
+    const startTime = Date.now();
     const result = await mobileApiService.getScanHistory(token, filters);
+    const duration = Date.now() - startTime;
+    console.info('[adminController] getAllSessions complete', {
+      duration,
+      sessionsCount: Array.isArray(result?.sessions) ? result.sessions.length : undefined
+    });
+    sessionsCache.data = result;
+    sessionsCache.timestamp = Date.now();
     return res.json(result);
   } catch (error) {
     console.error('❌ Get all sessions error:', error);
-    return res.status(500).json({ error: 'Failed to fetch sessions' });
+    const isNetworkError = error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND';
+    const status = error.response?.status || error.status || 500;
+    
+    if (isNetworkError) {
+      return res.status(503).json({ 
+        error: 'Mobile API connection failed',
+        message: 'Cannot connect to mobile backend to fetch sessions',
+        details: error.message
+      });
+    }
+    
+    return res.status(status >= 400 && status < 500 ? status : 500).json({ 
+      error: 'Failed to fetch sessions',
+      message: error.message || 'Unknown error occurred',
+      details: error.response?.data
+    });
   }
 };
 

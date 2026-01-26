@@ -1,21 +1,36 @@
 // file: src/components/dashboard/TechnicianPie.jsx
 import React, { useMemo } from 'react';
 
-const buildGradient = (segments) => {
-  if (!segments.length) {
-    return '#e5e7eb 0% 100%';
-  }
+const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
+  const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
+  return {
+    x: centerX + radius * Math.cos(angleInRadians),
+    y: centerY + radius * Math.sin(angleInRadians)
+  };
+};
 
-  const total = segments.reduce((sum, seg) => sum + seg.value, 0) || 1;
-  let start = 0;
-  return segments
-    .map((segment) => {
-      const percent = (segment.value / total) * 100;
-      const entry = `${segment.color} ${start}% ${start + percent}%`;
-      start += percent;
-      return entry;
-    })
-    .join(', ');
+const describeArc = (centerX, centerY, radius, startAngle, endAngle) => {
+  const start = polarToCartesian(centerX, centerY, radius, endAngle);
+  const end = polarToCartesian(centerX, centerY, radius, startAngle);
+  const largeArcFlag = endAngle - startAngle <= 180 ? 0 : 1;
+
+  return [
+    'M',
+    start.x,
+    start.y,
+    'A',
+    radius,
+    radius,
+    0,
+    largeArcFlag,
+    0,
+    end.x,
+    end.y,
+    'L',
+    centerX,
+    centerY,
+    'Z'
+  ].join(' ');
 };
 
 const palette = ['#0f4c81', '#1d4ed8', '#0ea5e9', '#16a34a', '#f97316', '#ca8a04'];
@@ -37,14 +52,62 @@ export default function TechnicianPie({ segments: rawSegments = [], centerLabel 
   }, [rawSegments]);
 
   const total = segments.reduce((sum, seg) => sum + seg.value, 0);
+  const size = 180;
+  const radius = 80;
+  const center = size / 2;
+
+  const slices = useMemo(() => {
+    if (!total) return [];
+    const visualSegments = segments.filter((segment) => segment.value > 0);
+    let currentAngle = 0;
+    return visualSegments.map((segment) => {
+      const sliceAngle = (segment.value / total) * 360;
+      const startAngle = currentAngle;
+      const endAngle = currentAngle + sliceAngle;
+      currentAngle = endAngle;
+      const midAngle = startAngle + sliceAngle / 2;
+      const labelPos = polarToCartesian(center, center, radius * 0.62, midAngle);
+      return {
+        ...segment,
+        startAngle,
+        endAngle,
+        percent: (segment.value / total) * 100,
+        labelX: labelPos.x,
+        labelY: labelPos.y
+      };
+    });
+  }, [segments, total, center, radius]);
 
   return (
     <div className="pie-wrapper">
-      <div className="pie-chart" style={{ background: `conic-gradient(${buildGradient(segments)})` }}>
-        <div className="pie-center">
-          <span className="pie-label">{centerLabel}</span>
-          <span className="pie-total">{total.toLocaleString()}</span>
-        </div>
+      <div className="pie-chart" role="img" aria-label={`${centerLabel} pie chart`}>
+        <svg viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+          {total ? (
+            slices.map((slice, index) => (
+              <path
+                key={`${slice.label}-${index}`}
+                d={describeArc(center, center, radius, slice.startAngle, slice.endAngle)}
+                fill={slice.color}
+              />
+            ))
+          ) : (
+            <circle cx={center} cy={center} r={radius} fill="#e5e7eb" />
+          )}
+          {total
+            ? slices.map((slice, index) => (
+                <text
+                  key={`label-${slice.label}-${index}`}
+                  x={slice.labelX}
+                  y={slice.labelY}
+                  className="pie-slice-label"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                >
+                  {slice.percent.toFixed(1)}%
+                </text>
+              ))
+            : null}
+        </svg>
       </div>
       <div className="pie-legend">
         {segments.map((segment) => (

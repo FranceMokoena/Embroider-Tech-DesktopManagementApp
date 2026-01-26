@@ -46,11 +46,11 @@ PORT=5001
 NODE_ENV=development
 
 # Mobile Backend API Configuration
-MOBILE_API_URL=http://localhost:5000/api
-MOBILE_API_KEY=your_mobile_backend_api_key_here
+MOBILE_API_URL=http://localhost:5002/api
+MOBILE_API_KEY=franceman99
 
 # JWT Configuration
-JWT_SECRET=your_desktop_jwt_secret_here
+JWT_SECRET=franceman99
 JWT_EXPIRES_IN=24h
 
 # Admin Configuration
@@ -59,7 +59,7 @@ ADMIN_PASSWORD=admin123
 ADMIN_EMAIL=admin@embroiderytech.com
 
 # CORS Configuration
-ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:19006
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:19006,http://localhost:5002
 
 # Rate Limiting
 RATE_LIMIT_WINDOW_MS=900000

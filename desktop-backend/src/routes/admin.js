@@ -18,8 +18,10 @@ import {
   getSessionById,
   deleteSession,
   searchScans,
-  searchUsers
+  searchUsers,
+  checkMobileApiHealth
 } from '../controllers/adminController.js';
+import { getNotifications } from '../controllers/dashboardController.js';
 
 const router = express.Router();
 
@@ -27,10 +29,14 @@ const router = express.Router();
 router.use(requireAuth);
 router.use(requireAdmin);
 
+// Health check (before other routes)
+router.get('/health/mobile-api', checkMobileApiHealth);
+
 // Dashboard
 router.get('/dashboard', getDashboardStats);
 router.get('/departments', getDepartments);
 router.post('/departments', createDepartment);
+router.get('/notifications', getNotifications);
 
 // User Management
 router.get('/users', getAllUsers);

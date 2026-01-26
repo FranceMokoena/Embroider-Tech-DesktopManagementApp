@@ -50,7 +50,10 @@ const handleResponse = async (response) => {
 const request = (path, options = {}, opts = {}) =>
   fetch(`${API_BASE}${path}`, {
     ...options,
-    headers: buildHeaders(options.headers, opts.useMobileToken ?? true)
+    cache: 'no-store',
+    headers: {
+      ...buildHeaders(options.headers, opts.useMobileToken ?? true)
+    }
   }).then(handleResponse);
 
 const buildQueryString = (params = {}) => {

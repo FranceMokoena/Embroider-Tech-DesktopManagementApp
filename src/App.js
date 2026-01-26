@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
+import './theme.css';
 import AdminLogin from './AdminLogin';
 import AdminRegister from './AdminRegister';
 import DashboardPage from './pages/Dashboard/DashboardPage';

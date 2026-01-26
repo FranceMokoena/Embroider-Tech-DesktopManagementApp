@@ -67,25 +67,22 @@ npm install
 
 ### 2. Configure Environment Variables
 
-Create a `.env` file in the `desktop-backend` directory:
-
-```bash
-cd desktop-backend
-cp env.example .env
-```
-
-Edit the `.env` file with your mobile backend configuration:
+The tracked `.env`/`.env.production` files currently contain the production values you shared; keep those files untouched so you can return to the live configuration after testing. For local development, the backend now loads `.env.development` whenever `NODE_ENV=development`, and Create React App will prefer that file as well. Create `.env.development` in the repository root with local-only overrides such as:
 
 ```env
-# Mobile API Configuration
-MOBILE_API_URL=http://localhost:5000/api
-MOBILE_API_KEY=your_mobile_api_key_here
-MOBILE_ADMIN_TOKEN=your_mobile_admin_token_here
-
-# Server Configuration
-PORT=5001
 NODE_ENV=development
+PORT=3000
+REACT_APP_DESKTOP_API=http://localhost:5001
+REACT_APP_MOBILE_API=http://localhost:5002/api
+MOBILE_API_URL=http://localhost:5002
+MOBILE_API_KEY=franceman99
+MOBILE_ADMIN_TOKEN=franceman99
+DESKTOP_SERVICE_TOKEN=franceman99
+REACT_APP_DESKTOP_SERVICE_TOKEN=franceman99
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:19006,http://localhost:5002
 ```
+
+This keeps the desktop frontend on `http://localhost:3000`, the backend on `http://localhost:5001`, and points all mobile API traffic to a local mobile backend at port 5002 without altering your production `.env`. You already have `.env.development` checked in for this purpose, so the original `.env` stays available for post-testing deployment.
 
 ### 3. Start the Desktop Backend
 ```bash
@@ -108,6 +105,8 @@ The React app will start on `http://localhost:3000`
 ```bash
 npm run dev
 ```
+
+> **Note:** When running `npm run electron-dev`, the Electron main process now loads `.env.development` in addition to `.env`, so it always targets the React dev server port (3000) instead of the production port. That keeps the desktop window from going blank because it no longer tries to load the wrong URL.
 
 This will start both the React app and Electron desktop application.
 
@@ -217,7 +216,7 @@ Enable debug logging by setting `NODE_ENV=development` in the environment variab
   - `localStorage.adminToken` stores the admin JWT returned by `/admin-login`; `RequireAuth` validates this key before rendering the AppShell.
   - `localStorage.mobileToken` (optional) stores the mobile token used by endpoints such as `/api/departments`; if it is missing, the client falls back to `DESKTOP_SERVICE_TOKEN=franceman99`.
 - **Environment defaults**
-  - Make sure `REACT_APP_DESKTOP_API` and `REACT_APP_MOBILE_API` both target `http://localhost:5001` (or the deployed mobile API host) so desktop requests hit the same Express server.
+- Make sure `REACT_APP_DESKTOP_API` targets `http://localhost:5001` and `REACT_APP_MOBILE_API` targets `http://localhost:5002/api` (or the deployed mobile API host) so the desktop UI always talks to its local admin API and the shared mobile service.
   - `REACT_APP_DESKTOP_SERVICE_TOKEN` / `DESKTOP_SERVICE_TOKEN` default to `franceman99`, allowing an Authorization header even before login completes.
 - **Client behavior**
   - `apiClient.buildHeaders` now switches between the mobile token (for `/api/departments`) and the admin token (for `/api/admin/*`), preventing “Invalid or expired token” errors on dashboard and technician screens.

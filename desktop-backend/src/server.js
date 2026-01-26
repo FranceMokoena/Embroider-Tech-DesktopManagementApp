@@ -15,18 +15,13 @@ import databaseRoutes from './routes/database.js';
 
 const PORT = process.env.PORT || 5001;
 const app = express();
+const isDev = process.env.NODE_ENV === 'development';
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: isDev ? false : { policy: 'same-origin' }
+}));
 app.use(compression());
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
-});
-app.use(limiter);
 
 // CORS configuration
 const defaultAllowedOrigins = [
@@ -49,13 +44,14 @@ const allowedOrigins = (
 const isAllowedOrigin = (origin) => {
   if (!origin) return true;
   const normalized = normalizeOrigin(origin);
+  if (normalized === 'null') return true;
   if (allowedOrigins.includes(normalized)) {
     return true;
   }
   return allowedHostPrefixes.some(prefix => normalized?.startsWith(prefix));
 };
 
-app.use(cors({
+const corsOptions = {
   origin: (origin, callback) => {
     if (isAllowedOrigin(origin)) {
       callback(null, true);
@@ -63,8 +59,24 @@ app.use(cors({
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true
-}));
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'mobile-token', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Authorization', 'mobile-token'],
+  maxAge: 86400
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
+// Rate limiting (after CORS so even 429 responses include CORS headers)
+const limiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
+  max: isDev ? 10000 : (parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100),
+  message: 'Too many requests from this IP, please try again later.',
+  skip: (req) => req.method === 'OPTIONS'
+});
+app.use(limiter);
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));

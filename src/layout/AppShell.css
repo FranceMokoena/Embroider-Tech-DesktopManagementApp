@@ -95,12 +95,27 @@
   background: rgba(11, 46, 74, 0.08);
 }
 
+.app-shell__theme-toggle {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid #d6dde6;
+  background: #ffffff;
+  color: #0b2e4a;
+  padding: 0;
+}
+
+.app-shell__theme-toggle:hover {
+  border-color: #0b2e4a;
+}
+
 .app-shell__notification {
   position: relative;
 }
 
 .app-shell__notification.is-shaking {
-  animation: notification-shake 0.9s ease-in-out;
+  animation: notification-shake 0.9s ease-in-out infinite;
+  transform-origin: center;
 }
 
 .app-shell__notification-badge {
@@ -152,6 +167,13 @@
   display: block;
   font-size: 20px;
   line-height: 1;
+}
+
+.app-shell__theme-icon {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+  display: block;
 }
 
 .app-shell__admin-wrapper {
@@ -212,6 +234,81 @@
   padding: 24px;
   background: #eef2f5;
   overflow: auto;
+}
+
+.theme-dark .app-shell {
+  background: #0b1220;
+  color: #e2e8f0;
+}
+
+.theme-dark .app-shell__inner {
+  background: #0b1220;
+}
+
+.theme-dark .app-shell__header {
+  background: #0f172a;
+  border-bottom-color: #1f2937;
+  box-shadow: 0 6px 16px rgba(2, 6, 23, 0.5);
+}
+
+.theme-dark .app-shell__header h1 {
+  color: #e2e8f0;
+}
+
+.theme-dark .app-shell__eyebrow {
+  color: #94a3b8;
+}
+
+.theme-dark .app-shell__toggle {
+  background: #1e293b;
+}
+
+.theme-dark .app-shell__toggle span {
+  background: #e2e8f0;
+}
+
+.theme-dark .app-shell__action {
+  color: #e2e8f0;
+}
+
+.theme-dark .app-shell__action:hover {
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.theme-dark .app-shell__action svg {
+  fill: #e2e8f0;
+}
+
+.theme-dark .app-shell__theme-toggle {
+  background: #0b1220;
+  border-color: #1f2937;
+  color: #e2e8f0;
+}
+
+.theme-dark .app-shell__admin {
+  color: #e2e8f0;
+}
+
+.theme-dark .app-shell__admin svg {
+  fill: #e2e8f0;
+}
+
+.theme-dark .app-shell__admin-menu {
+  background: #0f172a;
+  border-color: #1f2937;
+  box-shadow: 0 12px 24px rgba(2, 6, 23, 0.5);
+}
+
+.theme-dark .app-shell__admin-menu button {
+  color: #e2e8f0;
+}
+
+.theme-dark .app-shell__admin-menu button:hover {
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.theme-dark .app-shell__body {
+  background: #0b1220;
 }
 
 .app-shell.is-collapsed .app-shell__inner {

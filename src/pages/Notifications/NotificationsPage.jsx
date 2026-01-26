@@ -36,7 +36,9 @@ const STATUS_CONFIG = {
 
 const normalizeStatusValue = (value) => {
   const text = value?.toString().toLowerCase() ?? '';
+  if (text.includes('reparable')) return 'repairable';
   if (text.includes('repairable')) return 'repairable';
+  if (text.includes('written')) return 'beyond repair';
   if (text.includes('beyond')) return 'beyond repair';
   if (text.includes('healthy')) return 'healthy';
   return text;
@@ -142,14 +144,18 @@ export default function NotificationsPage() {
   }, [scanRows, seenCounts]);
 
   return (
-    <div className="page-view">
-      <header className="page-view__header">
+    <div className="page-view notifications-page">
+      <header className="page-view__header notifications-header">
         <div>
           <h2>Notifications</h2>
           <p>Live action history grouped by current screen status.</p>
         </div>
-        <div className="sessions-actions">
-          <button type="button" className="pill solid" onClick={handleMarkAllRead}>
+        <div className="notifications-header__actions">
+          <div className="notifications-live" aria-live="polite">
+            <span className="notifications-live__dot" aria-hidden="true" />
+            <span>Live feed</span>
+          </div>
+          <button type="button" className="notification-action" onClick={handleMarkAllRead}>
             Mark All Read
           </button>
         </div>
@@ -162,23 +168,29 @@ export default function NotificationsPage() {
         {renderedGroups.map((group) => (
           <article className="notification-card" key={group.id}>
             <div className="notification-card__header">
-              <span className="notification-card__emoji">{group.statusEmoji}</span>
-              <div>
+              <span className="notification-card__icon">{group.statusEmoji}</span>
+              <div className="notification-card__title">
                 <p className="eyebrow-text">Live scan notifications</p>
                 <h3>{group.title}</h3>
               </div>
-              {group.hasNew && <span className="notification-card__new-badge">NEW</span>}
+              <div className="notification-card__metrics">
+                <span className="notification-card__count">{group.count}</span>
+                {group.hasNew && <span className="notification-card__new-badge">NEW</span>}
+              </div>
             </div>
             <p className="notification-card__description">{group.description}</p>
-            <p className="notification-card__timestamp">{group.time}</p>
-            <Link
-              className="notification-card__link"
-              to={`/notifications/${group.id}`}
-              state={{ scans: group.rows }}
-              onClick={() => handleCardClick(group.id, group.count)}
-            >
-              {group.pathLabel}
-            </Link>
+            <div className="notification-card__footer">
+              <p className="notification-card__timestamp">Last updated {group.time}</p>
+              <Link
+                className="notification-card__link"
+                to={`/notifications/${group.id}`}
+                state={{ scans: group.rows }}
+                onClick={() => handleCardClick(group.id, group.count)}
+              >
+                {group.pathLabel}
+                <span aria-hidden="true">→</span>
+              </Link>
+            </div>
           </article>
         ))}
       </section>

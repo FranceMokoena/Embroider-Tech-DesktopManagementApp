@@ -16,12 +16,12 @@ npm run install-all
 ```bash
 npm run dev
 ```
-This will:
+-This will:
 - Start the backend server on port 5001
-- Start the React development server on port 5000
+- Start the React development server on port 3000
 - Launch the Electron desktop application
 
-`npm run backend` now uses the backend's `dev` script (nodemon) so server changes reload automatically, and `npm run dev` waits for both `http://localhost:5000` (React) and `http://localhost:5001` (backend) before opening the desktop UI so the API and web UI are ready.
+`npm run backend` now uses the backend's `dev` script (nodemon) so server changes reload automatically, and `npm run dev` waits for both `http://localhost:3000` (React) and `http://localhost:5001` (backend) before opening the desktop UI so the API and web UI are ready.
 
 ## Alternative Testing Methods
 
@@ -29,7 +29,7 @@ This will:
 ```bash
 npm start
 ```
-- Runs only the React frontend on http://localhost:5000
+- Runs only the React frontend on http://localhost:3000
 - Good for testing UI components without Electron
 
 ### Method 2: Backend-Only Testing
@@ -53,6 +53,11 @@ npm run electron-dev
 The application uses `.env.development` for local testing:
 ```
 REACT_APP_DESKTOP_API=http://localhost:5001
+REACT_APP_MOBILE_API=http://localhost:5002/api
+MOBILE_API_URL=http://localhost:5002
+MOBILE_API_KEY=franceman99
+MOBILE_ADMIN_TOKEN=franceman99
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:19006,http://localhost:5002
 ```
 
 ### Backend Configuration
@@ -60,6 +65,7 @@ The backend server runs on port 5001 by default and accepts connections from:
 - http://localhost:3000 (React dev server)
 - http://localhost:3001-3003 (Alternative ports)
 - http://localhost:19006 (Expo/React Native)
+The mobile service runs at http://localhost:5002/api, so make sure `MOBILE_API_URL` and `REACT_APP_MOBILE_API` point there.
 
 ## Testing Different Components
 

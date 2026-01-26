@@ -10,6 +10,103 @@
   color: #0f172a;
 }
 
+.theme-dark .dashboard-page {
+  background: #0b1220;
+  color: #e2e8f0;
+}
+
+.theme-dark .dashboard-page .dashboard-page__status {
+  color: #cbd5f5;
+}
+
+.theme-dark .dashboard-page .dashboard-page__status--error {
+  color: #fca5a5;
+}
+
+.theme-dark .dashboard-page .dashboard-export__button {
+  background: #1e293b;
+  color: #e2e8f0;
+  box-shadow: 0 12px 24px rgba(2, 6, 23, 0.5);
+}
+
+
+.theme-dark .dashboard-page .section-card {
+  background: #0f172a;
+  border-color: #1f2937;
+  box-shadow: 0 10px 26px rgba(2, 6, 23, 0.4);
+}
+
+.theme-dark .dashboard-page .section-card__header h2 {
+  color: #e2e8f0;
+}
+
+.theme-dark .dashboard-page .kpi {
+  border-color: #1f2937;
+  background: #111827;
+}
+
+.theme-dark .dashboard-page .kpi-icon {
+  background: rgba(148, 163, 184, 0.15);
+  color: #e2e8f0;
+}
+
+.theme-dark .dashboard-page .kpi-label {
+  color: #94a3b8;
+}
+
+.theme-dark .dashboard-page .kpi-value {
+  color: #e2e8f0;
+}
+
+.theme-dark .dashboard-page .pie-chart {
+  background: #0f172a;
+  box-shadow: 0 12px 24px rgba(2, 6, 23, 0.45);
+}
+
+.theme-dark .dashboard-page .pie-legend-item {
+  color: #e2e8f0;
+}
+
+.theme-dark .dashboard-page .legend-value {
+  color: #94a3b8;
+}
+
+.theme-dark .dashboard-page .card-stats {
+  border-color: #1f2937;
+  background: #111827;
+}
+
+.theme-dark .dashboard-page .card-stats h3 {
+  color: #94a3b8;
+}
+
+.theme-dark .dashboard-page .card-number {
+  color: #e2e8f0;
+}
+
+.theme-dark .dashboard-page .card-sub {
+  color: #94a3b8;
+}
+
+.theme-dark .dashboard-page .department-card {
+  border-color: #1f2937;
+  background: #111827;
+}
+
+.theme-dark .dashboard-page .department-card strong {
+  color: #e2e8f0;
+}
+
+.theme-dark .dashboard-page .department-card span {
+  color: #94a3b8;
+}
+
+.theme-dark .dashboard-page .department-card:hover,
+.theme-dark .dashboard-page .card-stats:hover,
+.theme-dark .dashboard-page .section-card:hover {
+  box-shadow: 0 16px 30px rgba(2, 6, 23, 0.5);
+}
+
 
 .dashboard-page__content {
   display: flex;
@@ -21,6 +118,9 @@
 .dashboard-export {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  margin-top: -50px;
 }
 
 .dashboard-export__button {
@@ -50,6 +150,7 @@
 .dashboard-export__button:hover:not(:disabled) {
   transform: translateY(-1px);
 }
+
 
 .sr-only {
   position: absolute;
@@ -132,46 +233,39 @@
 
 .pie-wrapper {
   display: flex;
-  gap: 16px;
+  gap: 18px;
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
 }
 
 .pie-chart {
-  width: 140px;
-  height: 140px;
+  /* Increased pie size for better visibility */
+  width: 200px;
+  height: 200px;
   border-radius: 50%;
   position: relative;
-  box-shadow: inset 0 0 0 12px #fff;
+  background: #ffffff;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
   animation: heartbeat 2.2s ease-in-out infinite;
   transform-origin: center;
+  display: grid;
+  place-items: center;
 }
 
-.pie-chart::after {
-  content: '';
-  position: absolute;
-  inset: 18px;
+.pie-chart svg {
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
-  background: #eef2f5;
 }
 
-.pie-center {
-  position: absolute;
-  inset: 36px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  text-align: center;
-  color: #0f172a;
-}
-
-.pie-center .pie-total {
-  font-size: 18px;
-  font-weight: 800;
-  margin-top: 4px;
+.pie-slice-label {
+  font-size: 11px;
+  font-weight: 700;
+  fill: #ffffff;
+  stroke: rgba(15, 23, 42, 0.65);
+  stroke-width: 2;
+  paint-order: stroke;
 }
 
 .pie-legend {

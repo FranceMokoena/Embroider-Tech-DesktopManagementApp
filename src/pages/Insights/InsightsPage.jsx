@@ -1,173 +1,138 @@
 import React from 'react';
 import './InsightsPage.css';
 
-const topics = [
+const overviewCards = [
+  {
+    title: 'What this platform delivers',
+    items: [
+      'Real-time visibility of scanning activity across technicians and departments.',
+      'Accountability through sessions, scan history, and performance summaries.',
+      'Operational insights that improve planning, staffing, and maintenance decisions.'
+    ]
+  },
+  {
+    title: 'What leaders should monitor',
+    items: [
+      'Scan volume trends (daily / weekly / monthly).',
+      'Technician productivity and session consistency.',
+      'Department throughput, idle time, and target compliance.',
+      'Repair vs written-off vs healthy screen ratios (quality indicators).'
+    ]
+  },
+  {
+    title: 'How to use insights effectively',
+    items: [
+      'Use the Dashboard for immediate operational status.',
+      'Use History & Sessions to investigate root causes and anomalies.',
+      'Use Technicians & Departments to manage accountability and targets.',
+      'Use Notifications to validate events and correct data mistakes with audit trace.'
+    ]
+  }
+];
+
+const featureEducation = [
   {
     title: 'Dashboard',
     detail:
-      'Aggregates live session, scanner and department trends. Pay attention to the pie charts because they signal balance between healthy, repairable and written-off screens.'
+      'Provides a high-level operational snapshot: activity volumes, department distribution, and quality ratios. Review trends daily to detect workflow changes early.'
   },
   {
     title: 'History & Sessions',
     detail:
-      'History profiles every scanned screen, while Sessions focuses on repeated technician activity. Use both to track coverage, technician churn, and outlier durations.'
+      'History tracks every scan record for traceability, while Sessions measures technician work patterns, session duration, and consistency. Use this area for investigations and performance reviews.'
   },
   {
     title: 'Technicians & Departments',
     detail:
-      'Technicians store identities plus department assignments and scan counts. Departments summarize team performance and help route assignments or notify managers.'
+      'Maintains technician profiles, department assignments, and aggregated performance. Supports productivity comparisons and targeted management action.'
   },
   {
     title: 'Notifications',
     detail:
-      'Streams scan actions pulled from the mobile backend—production, repair, and write-off buckets. The screen lets you delete individual scans when you want to clean data or resolve a mistake.'
+      'Live feed of scan events from the mobile workflow (production, repair, write-off). Supports operational awareness and controlled correction of captured data.'
   },
   {
     title: 'All Screens',
     detail:
-      'Lists every barcode scanned across the platform with start/end metadata. Filter by day, week, or month to roll up national coverage or cadence goals.'
+      'Full screen registry across the platform with timestamps and scan states. Filter by period to review coverage, compliance, and progress toward operational goals.'
+  }
+];
+
+const roadmap = [
+  {
+    phase: 'Phase 1 - Intelligence & Accountability',
+    items: [
+      'Smart KPI dashboard (today/week/month totals, utilization, peak hours).',
+      'Technician performance profiles (rankings, averages, active vs idle time).',
+      'Historical comparisons (month vs month, department vs department).'
+    ]
   }
 ];
 
 export default function InsightsPage() {
   return (
-    <div className="insights-page">
-      <header className="insights-page__header">
-        <h2>System Insights</h2>
-        <p>How this platform keeps EmbroideryTech in control and where it can grow.</p>
-      </header>
-      <section className="insights-grid">
-        {topics.map((topic) => (
-          <article key={topic.title} className="insights-card">
-            <h3>{topic.title}</h3>
-            <p>{topic.detail}</p>
-          </article>
-        ))}
+    <div className="page-view insights-page">
+      <section className="insights-hero">
+        <p className="insights-hero__eyebrow">Insights Center</p>
+        <h2 className="insights-hero__title">Operational intelligence for leadership teams</h2>
+        <p className="insights-hero__subtitle">
+          Use this space to align your team on the metrics that matter most, clarify where to
+          investigate issues, and keep the scanning workflow accountable end-to-end.
+        </p>
       </section>
-      <section className="insights-improvements-card">
-        <article className="insights-card insights-card--improvements">
-          <header>
-            <h3>🚀 Future System Enhancements</h3>
-            <p>
-              As your business grows and expands to multiple departments and locations, our system is designed to scale with you.
-              Here are the advanced features we can add to support your growth:
-            </p>
-          </header>
-          <div className="improvement-section">
-            <h4>🏢 Multi-Location Management</h4>
-            <ul>
-              <li>Multiple Factory Sites – Manage different production facilities from one system</li>
-              <li>Location-Specific Dashboards – Each factory has its own overview screen</li>
-              <li>Cross-Site Comparisons – See which locations perform best</li>
-              <li>Centralized Control – Manage all locations from one admin panel</li>
-              <li>Site-Specific Settings – Different rules and processes for each location</li>
-            </ul>
-          </div>
-          <div className="improvement-section">
-            <h4>🏭 Advanced Department Structure</h4>
-            <ul>
-              <li>Multiple Departments – Production, Quality Control, Maintenance, etc.</li>
-              <li>Department Managers – Supervisors can oversee their specific areas</li>
-              <li>Department Performance – Track efficiency by work area</li>
-              <li>Cross-Department Reports – Compare how different areas perform</li>
-              <li>Department-Specific Alerts – Notifications for specific work areas</li>
-            </ul>
-          </div>
-          <div className="improvement-section">
-            <h4>👥 Scalable User Management</h4>
-            <ul>
-              <li>Role-Based Access – Different permission levels for different people</li>
-              <li>Location-Based Access – Users only see their assigned factory</li>
-              <li>Department-Based Access – Users only see their work area</li>
-              <li>Multi-Site Technicians – Staff who work across different locations</li>
-              <li>Temporary Access – Short-term access for contractors or visitors</li>
-            </ul>
-          </div>
-          <div className="improvement-section">
-            <h4>📊 Advanced Reporting & Analytics</h4>
-            <ul>
-              <li>Multi-Location Dashboards – Overview of all your factories</li>
-              <li>Location Comparison Reports – See which sites are most efficient</li>
-              <li>Department Efficiency Reports – Which work areas perform best</li>
-              <li>Company-Wide Trends – Patterns across all locations</li>
-              <li>Executive Summaries – High-level reports for management</li>
-            </ul>
-          </div>
-          <div className="improvement-section">
-            <h4>🔄 Communication & Coordination</h4>
-            <ul>
-              <li>Inter-Site Messaging – Communication between different factories</li>
-              <li>Company-Wide Announcements – Send messages to all locations</li>
-              <li>Department-Specific Alerts – Targeted notifications for specific areas</li>
-              <li>Issue Escalation – Problems that need management attention</li>
-              <li>Best Practice Sharing – Share successful methods across locations</li>
-            </ul>
-          </div>
-          <div className="improvement-section">
-            <h4>🔒 Enhanced Security & Data Management</h4>
-            <ul>
-              <li>Location-Based Data – Secure separation of data by factory</li>
-              <li>Backup Per Location – Protect data for each site separately</li>
-              <li>Compliance Support – Meet different regulatory requirements</li>
-              <li>Audit Trails – Track all changes by location and department</li>
-              <li>Data Migration – Move data between locations when needed</li>
-            </ul>
-          </div>
-          <div className="improvement-section">
-            <h4>📱 Mobile App Enhancements</h4>
-            <ul>
-              <li>Location Detection – App automatically knows which factory you're in</li>
-              <li>Department Switching – Technicians can work in multiple areas</li>
-              <li>Site-Specific Workflows – Different processes for different locations</li>
-              <li>Offline Work Per Location – Work without internet at each site</li>
-              <li>Location-Based Notifications – Alerts specific to each factory</li>
-            </ul>
-          </div>
-          <div className="improvement-section">
-            <h4>🔗 Integration Capabilities</h4>
-            <ul>
-              <li>ERP System Connection – Connect with your existing business software</li>
-              <li>HR System Integration – Sync with employee management systems</li>
-              <li>Inventory System Connection – Track screen stock across all locations</li>
-              <li>Accounting Integration – Track costs by location and department</li>
-              <li>Custom Integrations – Connect with your specific business tools</li>
-            </ul>
-          </div>
-          <div className="improvement-section">
-            <h4>🎯 Operational Improvements</h4>
-            <ul>
-              <li>Shift Management – Track different work shifts across locations</li>
-              <li>Equipment Tracking – Monitor screen inventory across all sites</li>
-              <li>Maintenance Scheduling – Plan repairs and maintenance by location</li>
-              <li>Quality Standards – Different standards for different departments</li>
-              <li>Training Management – Track training across all locations</li>
-            </ul>
-          </div>
-          <hr />
-          <header>
-            <h3>📈 Growth Benefits</h3>
-          </header>
-          <div className="improvement-section">
-            <h4>For Expanding Businesses:</h4>
-            <ul>
-              <li>Seamless Scaling – Add new locations without changing systems</li>
-              <li>Standardized Processes – Same quality control across all sites</li>
-              <li>Centralized Management – Oversee everything from one place</li>
-              <li>Performance Comparison – See which locations are most efficient</li>
-              <li>Resource Optimization – Distribute staff and equipment effectively</li>
-            </ul>
-          </div>
-          <div className="improvement-section">
-            <h4>For Multi-Department Operations:</h4>
-            <ul>
-              <li>Department Accountability – Track performance by work area</li>
-              <li>Cross-Department Learning – Share best practices between areas</li>
-              <li>Specialized Workflows – Different processes for different departments</li>
-              <li>Department-Specific Reporting – Focus on what matters to each area</li>
-              <li>Coordinated Quality Control – Ensure consistency across departments</li>
-            </ul>
-          </div>
-        </article>
+
+      <section className="insights-section">
+        <div className="insights-section__header-row">
+          <h3 className="insights-section__title">Overview</h3>
+          <p className="insights-section__hint">Three pillars that keep the operation aligned.</p>
+        </div>
+        <div className="insights-grid">
+          {overviewCards.map((card) => (
+            <article className="insights-card" key={card.title}>
+              <h4 className="insights-card__title">{card.title}</h4>
+              <ul className="insights-list">
+                {card.items.map((item) => (
+                  <li key={`${card.title}-${item}`}>{item}</li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="insights-section">
+        <div className="insights-section__header-row">
+          <h3 className="insights-section__title">Feature guidance</h3>
+          <p className="insights-section__hint">Where to focus based on the question in front of you.</p>
+        </div>
+        <div className="insights-grid insights-grid--tight">
+          {featureEducation.map((feature) => (
+            <article className="insights-card" key={feature.title}>
+              <h4 className="insights-card__title">{feature.title}</h4>
+              <p className="insights-card__text">{feature.detail}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="insights-section">
+        <div className="insights-section__header-row">
+          <h3 className="insights-section__title">Roadmap</h3>
+          <p className="insights-section__hint">Planned intelligence upgrades for the platform.</p>
+        </div>
+        <div className="insights-roadmap">
+          {roadmap.map((phase) => (
+            <article className="insights-roadmap__item" key={phase.phase}>
+              <span className="insights-roadmap__badge">Planned</span>
+              <h4 className="insights-roadmap__title">{phase.phase}</h4>
+              <ul className="insights-list">
+                {phase.items.map((item) => (
+                  <li key={`${phase.phase}-${item}`}>{item}</li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
       </section>
     </div>
   );

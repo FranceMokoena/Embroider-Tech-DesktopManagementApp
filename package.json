@@ -1,6 +1,6 @@
 {
   "name": "embroidery-desktop",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "EmbroideryTech Desktop Management Application",
   "main": "src/main.js",
   "homepage": "./",
@@ -10,7 +10,7 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "electron": "npx electron .",
-    "electron-dev": "concurrently \"npm start\" \"wait-on http://localhost:5000 http://localhost:5001 && npm run electron\"",
+    "electron-dev": "concurrently \"npm start\" \"wait-on http://localhost:3000 http://localhost:5001 && npm run electron\"",
     "backend": "cd desktop-backend && npm run dev",
     "dev": "concurrently \"npm run backend\" \"npm run electron-dev\"",
     "install-all": "npm install && cd desktop-backend && npm install",
@@ -112,6 +112,7 @@
     }
   },
   "dependencies": {
+    "axios": "^1.13.3",
     "concurrently": "^8.2.2",
     "dotenv": "^17.2.3",
     "electron-is-dev": "^2.0.0",

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from './context/ToastContext';
+import { setAdminTokenStorage } from './utils/authStorage';
+import { ensureMobileToken } from './services/mobileTokenService';
 import './AdminLogin.css';
 
 const DESKTOP_API = process.env.REACT_APP_DESKTOP_API || 'http://localhost:5001';
@@ -68,10 +70,11 @@ function AdminLogin() {
       if (!response.ok) {
         error(data.error || 'Login failed. Please check your credentials.');
       } else {
-      localStorage.setItem('adminToken', data.token);
-      sessionStorage.setItem('adminTokenBackup', data.token);
-      localStorage.setItem('adminUsername', data.user.username);
-      sessionStorage.setItem('adminUsernameBackup', data.user.username);
+      setAdminTokenStorage(data.token, data.user.username);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('admin-token-ready'));
+      }
+      await ensureMobileToken(data.token);
 
         success('Login successful! Redirecting to dashboard...', 2000);
         setTimeout(() => {

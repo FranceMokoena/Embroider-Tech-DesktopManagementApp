@@ -240,21 +240,23 @@
 .technician-add-modal {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.55);
+  background: rgba(15, 23, 42, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: 24px;
   z-index: 30;
 }
 
 .technician-add-modal__inner {
-  width: min(460px, 100%);
-  background: #0f172a;
-  border-radius: 18px;
+  width: min(480px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border-radius: 16px;
   padding: 24px;
-  box-shadow: 0 35px 65px rgba(15, 23, 42, 0.45);
-  color: #fff;
+  box-shadow: 0 30px 60px rgba(15, 23, 42, 0.25);
+  color: #0b2e4a;
 }
 
 .technician-add-modal__header {
@@ -267,7 +269,7 @@
 
 .technician-add-modal__header h3 {
   margin: 4px 0 0;
-  font-size: 17px;
+  font-size: 20px;
   line-height: 1.4;
   color: #0b2e4a;
 }
@@ -288,20 +290,24 @@
 }
 
 .technician-add-form label {
-  font-size: 12px;
-  color: #fff;
+  font-size: 13px;
+  color: #0b2e4a;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
 }
 
 .technician-add-form input {
-  border: none;
+  border: 1px solid #d6dde6;
   border-radius: 10px;
-  padding: 12px;
-  font-size: 13px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
+  padding: 10px 12px;
+  font-size: 14px;
+  background: #ffffff;
+  color: #0b2e4a;
+}
+
+.technician-add-form input::placeholder {
+  color: #94a3b8;
 }
 
 .technician-add-form__actions {
