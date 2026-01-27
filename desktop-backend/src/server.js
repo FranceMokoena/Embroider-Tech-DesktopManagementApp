@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './config/env.js';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -45,6 +45,7 @@ const isAllowedOrigin = (origin) => {
   if (!origin) return true;
   const normalized = normalizeOrigin(origin);
   if (normalized === 'null') return true;
+  if (allowedOrigins.includes('*')) return true;
   if (allowedOrigins.includes(normalized)) {
     return true;
   }

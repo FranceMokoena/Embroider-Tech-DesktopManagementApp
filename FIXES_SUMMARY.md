@@ -151,3 +151,11 @@ REACT_APP_DESKTOP_SERVICE_TOKEN=franceman99
 - All error handling now includes retry logic and better error messages
 - Health check endpoint can be used for monitoring and diagnostics
 
+
+
+
+curl.exe -i `
+  -H "Origin: http://localhost:3000" `
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJkZXNrdG9wLXNlcnZpY2UiLCJpc0FkbWluIjp0cnVlLCJpYXQiOjE3NjkzNjgxNTAsImV4cCI6MTc2OTQ1NDU1MH0.JibwyzwhFIkt2Numa5ZnhoL5BEPmRX1KDVaCOg6VbkM" `
+  -H "mobile-token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJkZXNrdG9wLXNlcnZpY2UiLCJpc0FkbWluIjp0cnVlLCJpYXQiOjE3NjkzNjgxNTAsImV4cCI6MTc2OTQ1NDU1MH0.JibwyzwhFIkt2Numa5ZnhoL5BEPmRX1KDVaCOg6VbkM" `
+  http://localhost:5001/api/admin/departments
