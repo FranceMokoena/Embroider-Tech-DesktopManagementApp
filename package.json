@@ -75,7 +75,7 @@
       "icon": "build-resources/logo256.png",
       "requestedExecutionLevel": "asInvoker",
       "verifyUpdateCodeSignature": false,
-      "publisherName": "EmbroideryTech",
+      "publisherName": "AuraGo",
       "fileAssociations": [
         {
           "ext": "emb",

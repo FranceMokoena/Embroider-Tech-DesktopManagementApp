@@ -8,6 +8,8 @@ import {
   buildScanRows
 } from '../../utils/sessionAggregators';
 
+const PAGE_SIZE = 12;
+
 const formatTimestamp = (value) => {
   if (!value) return 'ƒ?"';
   try {
@@ -24,6 +26,19 @@ const TIMEFRAME_OPTIONS = [
   { key: 'month', label: 'Month' }
 ];
 
+const resolveTimestampMs = (value) => {
+  if (value === null || value === undefined) return 0;
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value < 1e12 ? value * 1000 : value;
+  }
+  const asNumber = Number(value);
+  if (Number.isFinite(asNumber)) {
+    return asNumber < 1e12 ? asNumber * 1000 : asNumber;
+  }
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
 const filterScreensByTimeframe = (screens = [], timeframe = 'all') => {
   if (!timeframe || timeframe === 'all') return screens;
   const now = Date.now();
@@ -36,8 +51,8 @@ const filterScreensByTimeframe = (screens = [], timeframe = 'all') => {
   if (!offset) return screens;
   const cutoff = now - offset;
   return screens.filter((row) => {
-    const timestamp = row.timestamp ? Date.parse(row.timestamp) : NaN;
-    return Number.isFinite(timestamp) && timestamp >= cutoff;
+    const timestamp = resolveTimestampMs(row.timestamp);
+    return timestamp >= cutoff && timestamp !== 0;
   });
 };
 
@@ -66,6 +81,7 @@ const AllScreensPage = () => {
   const [error, setError] = useState(null);
   const [deletingBarcode, setDeletingBarcode] = useState(null);
   const [timeframe, setTimeframe] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -96,7 +112,45 @@ const AllScreensPage = () => {
     };
   }, []);
 
-  const filteredScreens = useMemo(() => filterScreensByTimeframe(screens, timeframe), [screens, timeframe]);
+  const filteredScreens = useMemo(() => {
+    const scopedScreens = filterScreensByTimeframe(screens, timeframe);
+    return scopedScreens
+      .slice()
+      .sort((a, b) => resolveTimestampMs(b.timestamp) - resolveTimestampMs(a.timestamp));
+  }, [screens, timeframe]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [timeframe]);
+
+  const totalPages = useMemo(
+    () => (filteredScreens.length ? Math.ceil(filteredScreens.length / PAGE_SIZE) : 1),
+    [filteredScreens.length]
+  );
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const pagedScreens = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredScreens.slice(start, start + PAGE_SIZE);
+  }, [filteredScreens, currentPage]);
+
+  const pageNumbers = useMemo(() => {
+    const maxButtons = 5;
+    if (totalPages <= maxButtons) {
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+    let start = Math.max(1, currentPage - 2);
+    let end = Math.min(totalPages, start + maxButtons - 1);
+    if (end - start < maxButtons - 1) {
+      start = Math.max(1, end - maxButtons + 1);
+    }
+    return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+  }, [currentPage, totalPages]);
 
   const stats = useMemo(() => {
     const uniqueTechnicians = new Set(screens.map((row) => row.technician));
@@ -213,7 +267,7 @@ const AllScreensPage = () => {
                 <span>Session</span>
                 <span>Timestamp</span>
               </div>
-              {filteredScreens.map((row) => (
+              {pagedScreens.map((row) => (
                 <div className="all-screens-table__row" key={row.id}>
                   <span>{row.barcode}</span>
                   <span>{row.status}</span>
@@ -233,6 +287,42 @@ const AllScreensPage = () => {
                 </div>
               ))}
             </div>
+            {filteredScreens.length > PAGE_SIZE && (
+              <div className="all-screens-pagination">
+                <button
+                  type="button"
+                  className="all-screens-pagination__button"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  aria-label="Previous page"
+                >
+                  &lt;
+                </button>
+                {pageNumbers.map((page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    className={`all-screens-pagination__button ${page === currentPage ? 'is-active' : ''}`}
+                    onClick={() => setCurrentPage(page)}
+                    aria-current={page === currentPage ? 'page' : undefined}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="all-screens-pagination__button"
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  aria-label="Next page"
+                >
+                  &gt;
+                </button>
+                <span className="all-screens-pagination__meta">
+                  Page {currentPage} of {totalPages}
+                </span>
+              </div>
+            )}
           </section>
         </>
       )}

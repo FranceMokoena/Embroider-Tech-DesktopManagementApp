@@ -3,6 +3,7 @@ import './SessionsPage.css';
 import { getDepartments, getSessions, getUsers } from '../../services/apiClient';
 
 const ACTIVITY_OPTIONS = ['LOGIN', 'LOGOUT', 'STARTED SESSION', 'SCANNING'];
+const PAGE_SIZE = 12;
 
 const resolveTechnicianName = (raw, user) => {
   if (user) {
@@ -220,6 +221,7 @@ export default function SessionsPage() {
   const [error, setError] = useState(null);
   const [showFilters, setShowFilters] = useState(true);
   const [filters, setFilters] = useState({ technician: '', department: '', day: '' });
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchSessions = async () => {
     setLoading(true);
@@ -274,6 +276,39 @@ export default function SessionsPage() {
       return matchesTechnician && matchesDepartment && matchesDay;
     });
   }, [filters, sessionList]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters.technician, filters.department, filters.day]);
+
+  const totalPages = useMemo(
+    () => (filteredSessions.length ? Math.ceil(filteredSessions.length / PAGE_SIZE) : 1),
+    [filteredSessions.length]
+  );
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const pagedSessions = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredSessions.slice(start, start + PAGE_SIZE);
+  }, [filteredSessions, currentPage]);
+
+  const pageNumbers = useMemo(() => {
+    const maxButtons = 5;
+    if (totalPages <= maxButtons) {
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+    let start = Math.max(1, currentPage - 2);
+    let end = Math.min(totalPages, start + maxButtons - 1);
+    if (end - start < maxButtons - 1) {
+      start = Math.max(1, end - maxButtons + 1);
+    }
+    return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+  }, [currentPage, totalPages]);
 
   const summaryStats = useMemo(() => {
     const total = sessionList.length;
@@ -443,7 +478,7 @@ export default function SessionsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredSessions.map((session) => (
+                {pagedSessions.map((session) => (
                   <tr key={session.id}>
                     <td>
                       <div className="session-table__id">{session.id}</div>
@@ -474,6 +509,42 @@ export default function SessionsPage() {
               </tbody>
             </table>
           </div>
+          {filteredSessions.length > PAGE_SIZE && (
+            <div className="sessions-pagination">
+              <button
+                type="button"
+                className="sessions-pagination__button"
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                aria-label="Previous page"
+              >
+                &lt;
+              </button>
+              {pageNumbers.map((page) => (
+                <button
+                  key={page}
+                  type="button"
+                  className={`sessions-pagination__button ${page === currentPage ? 'is-active' : ''}`}
+                  onClick={() => setCurrentPage(page)}
+                  aria-current={page === currentPage ? 'page' : undefined}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="sessions-pagination__button"
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                aria-label="Next page"
+              >
+                &gt;
+              </button>
+              <span className="sessions-pagination__meta">
+                Page {currentPage} of {totalPages}
+              </span>
+            </div>
+          )}
         </section>
       )}
     </div>

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import './DepartmentsPage.css';
@@ -10,6 +10,7 @@ import {
 } from '../../utils/sessionAggregators';
 
 const STATUS_OPTIONS = ['ACTIVE', 'INACTIVE', 'ARCHIVED'];
+const PAGE_SIZE = 12;
 
 const EMPTY_FORM = {
   name: '',
@@ -45,6 +46,7 @@ export default function DepartmentsPage() {
   const [editingDepartment, setEditingDepartment] = useState(null);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [departmentSessionTotals, setDepartmentSessionTotals] = useState({});
+  const [currentPage, setCurrentPage] = useState(1);
 
   const refreshDepartments = async () => {
     setLoading(true);
@@ -280,6 +282,35 @@ export default function DepartmentsPage() {
     }
   };
 
+  const totalPages = useMemo(
+    () => (departments.length ? Math.ceil(departments.length / PAGE_SIZE) : 1),
+    [departments.length]
+  );
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const pagedDepartments = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return departments.slice(start, start + PAGE_SIZE);
+  }, [departments, currentPage]);
+
+  const pageNumbers = useMemo(() => {
+    const maxButtons = 5;
+    if (totalPages <= maxButtons) {
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+    let start = Math.max(1, currentPage - 2);
+    let end = Math.min(totalPages, start + maxButtons - 1);
+    if (end - start < maxButtons - 1) {
+      start = Math.max(1, end - maxButtons + 1);
+    }
+    return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+  }, [currentPage, totalPages]);
+
   return (
     <div className="page-view">
       <header className="page-view__header department-header">
@@ -320,7 +351,8 @@ export default function DepartmentsPage() {
       {error && <p className="dashboard-page__status dashboard-page__status--error">{error}</p>}
 
       {!loading && !error && (
-        <div className="department-table">
+        <div className="department-table-container">
+          <div className="department-table">
           <table>
             <thead>
               <tr>
@@ -334,7 +366,7 @@ export default function DepartmentsPage() {
               </tr>
             </thead>
             <tbody>
-              {departments.map((dept) => (
+              {pagedDepartments.map((dept) => (
                 <tr key={dept._id ?? dept.id ?? dept.code}>
                   <td>{dept.name}</td>
                   <td>{dept.code}</td>
@@ -379,6 +411,43 @@ export default function DepartmentsPage() {
               ))}
             </tbody>
           </table>
+        </div>
+        {departments.length > PAGE_SIZE && (
+          <div className="departments-pagination">
+            <button
+              type="button"
+              className="departments-pagination__button"
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              aria-label="Previous page"
+            >
+              &lt;
+            </button>
+            {pageNumbers.map((page) => (
+              <button
+                key={page}
+                type="button"
+                className={`departments-pagination__button ${page === currentPage ? 'is-active' : ''}`}
+                onClick={() => setCurrentPage(page)}
+                aria-current={page === currentPage ? 'page' : undefined}
+              >
+                {page}
+              </button>
+            ))}
+            <button
+              type="button"
+              className="departments-pagination__button"
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              aria-label="Next page"
+            >
+              &gt;
+            </button>
+            <span className="departments-pagination__meta">
+              Page {currentPage} of {totalPages}
+            </span>
+          </div>
+        )}
         </div>
       )}
 

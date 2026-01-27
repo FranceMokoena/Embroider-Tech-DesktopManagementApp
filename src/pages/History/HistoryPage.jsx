@@ -9,6 +9,8 @@ import {
   buildScanRows
 } from '../../utils/sessionAggregators';
 
+const PAGE_SIZE = 12;
+
 const formatDate = (value) => {
   if (!value) return 'Unknown';
   try {
@@ -26,6 +28,7 @@ export default function HistoryPage() {
   const [error, setError] = useState(null);
   const [deletingBarcode, setDeletingBarcode] = useState(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -90,7 +93,34 @@ export default function HistoryPage() {
     ];
   }, [historyPayload, sessions.length, totalScans]);
 
-  const recentScans = useMemo(() => scanRows.slice(0, 8), [scanRows]);
+  const totalPages = useMemo(
+    () => (scanRows.length ? Math.ceil(scanRows.length / PAGE_SIZE) : 1),
+    [scanRows.length]
+  );
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const pagedScans = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return scanRows.slice(start, start + PAGE_SIZE);
+  }, [scanRows, currentPage]);
+
+  const pageNumbers = useMemo(() => {
+    const maxButtons = 5;
+    if (totalPages <= maxButtons) {
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+    let start = Math.max(1, currentPage - 2);
+    let end = Math.min(totalPages, start + maxButtons - 1);
+    if (end - start < maxButtons - 1) {
+      start = Math.max(1, end - maxButtons + 1);
+    }
+    return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+  }, [currentPage, totalPages]);
 
   const handleDeleteScan = async (scan) => {
     if (!scan?.barcode) return;
@@ -172,7 +202,7 @@ export default function HistoryPage() {
                 <span>Status</span>
                 <span>Timestamp</span>
               </div>
-              {recentScans.map((scan) => (
+              {pagedScans.map((scan) => (
                 <div className="history-table__row" key={scan.id}>
                   <span>#{scan.sessionId}</span>
                   <span>{scan.technician}</span>
@@ -192,6 +222,42 @@ export default function HistoryPage() {
                 </div>
               ))}
             </div>
+            {scanRows.length > PAGE_SIZE && (
+              <div className="history-pagination">
+                <button
+                  type="button"
+                  className="history-pagination__button"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  aria-label="Previous page"
+                >
+                  &lt;
+                </button>
+                {pageNumbers.map((page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    className={`history-pagination__button ${page === currentPage ? 'is-active' : ''}`}
+                    onClick={() => setCurrentPage(page)}
+                    aria-current={page === currentPage ? 'page' : undefined}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="history-pagination__button"
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  aria-label="Next page"
+                >
+                  &gt;
+                </button>
+                <span className="history-pagination__meta">
+                  Page {currentPage} of {totalPages}
+                </span>
+              </div>
+            )}
           </section>
         </>
       )}

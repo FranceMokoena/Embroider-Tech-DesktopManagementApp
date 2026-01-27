@@ -74,7 +74,7 @@ app.options('*', cors(corsOptions));
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
   max: isDev ? 10000 : (parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100),
-  message: 'Too many requests from this IP, please try again later.',
+  message: 'Too many requests from this IP, please try to logout and login again.',
   skip: (req) => req.method === 'OPTIONS'
 });
 app.use(limiter);

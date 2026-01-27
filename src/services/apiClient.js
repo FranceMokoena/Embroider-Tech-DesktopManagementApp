@@ -37,7 +37,7 @@ const handleResponse = async (response) => {
       (payload && typeof payload === 'object' && (payload.error || payload.message)) ||
       (typeof payload === 'string' && payload.trim()) ||
       response.statusText ||
-      'Unable to complete request';
+      'Unable to complete request,please try again again or later';
     const error = new Error(message);
     error.status = response.status;
     error.details = payload;

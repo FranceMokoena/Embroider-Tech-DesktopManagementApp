@@ -3,6 +3,9 @@
   background: #0b2e4a;
   color: #fff;
   min-height: 100vh;
+  height: 100vh;
+  position: sticky;
+  top: 0;
   display: flex;
   flex-direction: column;
   transition: width 0.3s ease;

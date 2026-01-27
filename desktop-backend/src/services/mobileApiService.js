@@ -19,7 +19,7 @@ console.info('[mobileApiService] Configuration:', {
 const createClient = (token) => {
   const authToken = token || MOBILE_API_KEY;
   if (!authToken) {
-    console.warn('[mobileApiService] No authentication token provided, requests may fail');
+    console.warn('[mobileApiService] No authentication token provided, requests may fail, please restart the application');
   }
   return axios.create({
     baseURL: MOBILE_API_URL,

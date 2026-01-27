@@ -161,7 +161,7 @@ export const getScanHistory = async (req, res) => {
   } catch (error) {
     console.error('❌ Scan history error:', error);
     res.status(500).json({ 
-      error: 'Failed to fetch scan history',
+      error: 'Failed to fetch scan history, please try to logout and login again',
       details: error.message 
     });
   }
@@ -307,7 +307,7 @@ export const getNotifications = async (req, res) => {
   } catch (error) {
     console.error('❌ Notifications fetch error:', error);
     res.status(500).json({ 
-      error: 'Failed to fetch notifications',
+      error: 'Failed to fetch notifications, please try to logout and login again',
       details: error.message 
     });
   }

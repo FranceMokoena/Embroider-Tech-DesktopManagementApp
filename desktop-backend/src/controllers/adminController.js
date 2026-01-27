@@ -387,7 +387,7 @@ export const getDashboardStats = async (req, res) => {
     }
     
     return res.status(status >= 400 && status < 500 ? status : 500).json({ 
-      error: 'Failed to fetch dashboard statistics',
+      error: 'Failed to fetch dashboard statistics, please try to logout and login again',
       message: error.message || 'Unknown error occurred',
       details: error.response?.data || error.details
     });
@@ -417,13 +417,13 @@ export const getDepartments = async (req, res) => {
     if (isNetworkError) {
       return res.status(503).json({ 
         error: 'Mobile API connection failed',
-        message: 'Cannot connect to mobile backend to fetch departments',
+        message: 'Cannot connect to mobile backend to fetch departments, please verify the mobile API is running and accessible',
         details: error.message
       });
     }
     
     return res.status(status >= 400 && status < 500 ? status : 500).json({ 
-      error: 'Failed to fetch departments',
+      error: 'Failed to fetch departments, reload and login again',
       message: error.message || 'Unknown error occurred',
       details: error.response?.data
     });
@@ -440,7 +440,7 @@ export const createDepartment = async (req, res) => {
     return res.status(201).json(result);
   } catch (error) {
     console.error('? Create department error:', error);
-    return res.status(500).json({ error: 'Failed to create department' });
+    return res.status(500).json({ error: 'Failed to create department, department details already exist, try to delete the existing department first and recreate' });
   }
 };
 
@@ -463,7 +463,7 @@ export const getAllUsers = async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Get all users error:', error);
-    return res.status(500).json({ error: 'Failed to fetch users' });
+    return res.status(500).json({ error: 'Failed to fetch users, please try to logout and login again' });
   }
 };
 
@@ -518,7 +518,7 @@ export const createUser = async (req, res) => {
 
   } catch (error) {
     console.error('❌ Create user error:', error);
-    return res.status(500).json({ error: 'Failed to create user' });
+    return res.status(500).json({ error: 'Failed to create user, make sure user don\'t already exist' });
   }
 };
 

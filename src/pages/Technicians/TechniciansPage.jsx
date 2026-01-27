@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import './TechniciansPage.css';
 import { createUser, deleteUser, getDepartments, getSessions, getUsers, updateUser } from '../../services/apiClient';
 
+const PAGE_SIZE = 12;
+
 const sortOptions = [
   { key: 'name', label: 'Name' },
   { key: 'department', label: 'Department' },
@@ -136,6 +138,7 @@ export default function TechniciansPage() {
     newPassword: '',
     confirmPassword: ''
   });
+  const [currentPage, setCurrentPage] = useState(1);
   const [departments, setDepartments] = useState([]);
   const [departmentLookup, setDepartmentLookup] = useState({});
 
@@ -261,6 +264,39 @@ export default function TechniciansPage() {
     return list.sort((a, b) => a[sortKey]?.toString().localeCompare(b[sortKey]?.toString() ?? ''));
   }, [technicians, sortKey]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [sortKey]);
+
+  const totalPages = useMemo(
+    () => (sortedTechnicians.length ? Math.ceil(sortedTechnicians.length / PAGE_SIZE) : 1),
+    [sortedTechnicians.length]
+  );
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const pagedTechnicians = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return sortedTechnicians.slice(start, start + PAGE_SIZE);
+  }, [sortedTechnicians, currentPage]);
+
+  const pageNumbers = useMemo(() => {
+    const maxButtons = 5;
+    if (totalPages <= maxButtons) {
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+    let start = Math.max(1, currentPage - 2);
+    let end = Math.min(totalPages, start + maxButtons - 1);
+    if (end - start < maxButtons - 1) {
+      start = Math.max(1, end - maxButtons + 1);
+    }
+    return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+  }, [currentPage, totalPages]);
+
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
   const closeEditModal = () => setIsEditModalOpen(false);
@@ -353,7 +389,7 @@ export default function TechniciansPage() {
             </tr>
           </thead>
           <tbody>
-            {sortedTechnicians.map((tech) => {
+            {pagedTechnicians.map((tech) => {
               const initials = tech.name
                 .split(' ')
                 .map((segment) => segment[0])
@@ -390,6 +426,42 @@ export default function TechniciansPage() {
           </tbody>
         </table>
       </div>
+      {sortedTechnicians.length > PAGE_SIZE && (
+        <div className="technicians-pagination">
+          <button
+            type="button"
+            className="technicians-pagination__button"
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            aria-label="Previous page"
+          >
+            &lt;
+          </button>
+          {pageNumbers.map((page) => (
+            <button
+              key={page}
+              type="button"
+              className={`technicians-pagination__button ${page === currentPage ? 'is-active' : ''}`}
+              onClick={() => setCurrentPage(page)}
+              aria-current={page === currentPage ? 'page' : undefined}
+            >
+              {page}
+            </button>
+          ))}
+          <button
+            type="button"
+            className="technicians-pagination__button"
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            aria-label="Next page"
+          >
+            &gt;
+          </button>
+          <span className="technicians-pagination__meta">
+            Page {currentPage} of {totalPages}
+          </span>
+        </div>
+      )}
       {departments.length > 0 && (
         <datalist id="department-options">
           {departments.map((dept) => (

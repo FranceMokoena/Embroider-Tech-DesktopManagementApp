@@ -11,9 +11,11 @@ const electronDevUrl = process.env.ELECTRON_DEV_URL || `http://localhost:${devSe
 
 let mainWindow;
 
-// Auto-updater configuration
-autoUpdater.autoDownload = false; // We'll handle download manually to show progress
-autoUpdater.autoInstallOnAppQuit = true;
+// Auto-updater configuration (enforced updates in production)
+autoUpdater.autoDownload = true;
+autoUpdater.autoInstallOnAppQuit = false;
+
+const UPDATE_CHECK_INTERVAL_MS = 1000 * 60 * 60; // 1 hour
 
 // Update status variables
 let updateAvailable = false;
@@ -177,24 +179,23 @@ autoUpdater.on('update-available', (info) => {
     });
   }
   
-  // Show update dialog
+  // Enforce update: download immediately and inform the user
   dialog.showMessageBox(mainWindow, {
     type: 'info',
-    title: 'Update Available',
-    message: `A new version (${info.version}) is available!`,
-    detail: 'Would you like to download and install the update now?',
-    buttons: ['Download Now', 'Later'],
+    title: 'Update Required',
+    message: `A new version (${info.version}) is available.`,
+    detail: 'The update will download now and the app will restart to finish installation.',
+    buttons: ['OK'],
     defaultId: 0
-  }).then((result) => {
-    if (result.response === 0) {
-      // User clicked "Download Now"
-      autoUpdater.downloadUpdate();
-    }
+  }).finally(() => {
+    autoUpdater.downloadUpdate();
   });
 });
 
 autoUpdater.on('update-not-available', () => {
   console.log('✅ No updates available');
+  updateAvailable = false;
+  updateDownloaded = false;
   if (mainWindow) {
     mainWindow.webContents.send('update-status', { status: 'not-available', message: 'No updates available' });
   }
@@ -223,19 +224,16 @@ autoUpdater.on('update-downloaded', (info) => {
     });
   }
   
-  // Show install dialog
+  // Enforce install immediately
   dialog.showMessageBox(mainWindow, {
     type: 'info',
-    title: 'Update Ready',
-    message: `Update ${info.version} has been downloaded!`,
-    detail: 'The application will restart to install the update.',
-    buttons: ['Restart Now', 'Later'],
+    title: 'Installing Update',
+    message: `Update ${info.version} is ready to install.`,
+    detail: 'The application will restart now.',
+    buttons: ['OK'],
     defaultId: 0
-  }).then((result) => {
-    if (result.response === 0) {
-      // User clicked "Restart Now"
-      autoUpdater.quitAndInstall();
-    }
+  }).finally(() => {
+    autoUpdater.quitAndInstall(true, true);
   });
 });
 
@@ -245,6 +243,24 @@ autoUpdater.on('error', (err) => {
     mainWindow.webContents.send('update-status', { 
       status: 'error', 
       message: 'Update error: ' + err.message 
+    });
+  }
+
+  if (updateAvailable) {
+    dialog.showMessageBox(mainWindow, {
+      type: 'error',
+      title: 'Update Failed',
+      message: 'An update is required but could not be downloaded.',
+      detail: err.message,
+      buttons: ['Retry', 'Quit'],
+      defaultId: 0,
+      cancelId: 1
+    }).then((result) => {
+      if (result.response === 0) {
+        autoUpdater.checkForUpdates();
+      } else {
+        app.quit();
+      }
     });
   }
 });
@@ -264,12 +280,20 @@ ipcMain.handle('download-update', () => {
 
 ipcMain.handle('install-update', () => {
   if (updateDownloaded && !isDev) {
-    autoUpdater.quitAndInstall();
+    autoUpdater.quitAndInstall(true, true);
   }
 });
 
 // Electron app lifecycle
-app.on('ready', createWindow);
+app.on('ready', () => {
+  createWindow();
+
+  if (!isDev) {
+    setInterval(() => {
+      autoUpdater.checkForUpdates();
+    }, UPDATE_CHECK_INTERVAL_MS);
+  }
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {

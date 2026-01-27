@@ -1,7 +1,9 @@
 .app-shell {
   display: flex;
   min-height: 100vh;
+  height: 100vh;
   background: #eef2f5;
+  overflow: hidden;
 }
 
 .app-shell__inner {
@@ -10,6 +12,9 @@
   flex-direction: column;
   background: #eef2f5;
   transition: margin-left 0.3s ease;
+  min-width: 0;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .app-shell__header {
@@ -234,6 +239,7 @@
   padding: 24px;
   background: #eef2f5;
   overflow: auto;
+  min-height: 0;
 }
 
 .theme-dark .app-shell {

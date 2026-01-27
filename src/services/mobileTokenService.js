@@ -20,7 +20,7 @@ const writeStorage = (token) => {
 
 const requestMobileToken = async (token) => {
   if (!token) {
-    throw new Error('Admin token is required to request mobile token');
+    throw new Error('Admin token is required to request mobile token, please try to login again');
   }
 
   const url = `${DESKTOP_API}${ENDPOINT}`;

@@ -38,7 +38,7 @@ export const requireAuth = (req, res, next) => {
     const auth = req.headers.authorization;
     if (!auth?.startsWith('Bearer ')) {
       console.warn('requireAuth missing/invalid Authorization header', { authorization: auth });
-      return res.status(401).json({ error: 'Missing or invalid Authorization header' });
+      return res.status(401).json({ error: 'Missing or invalid Authorization header,please try to restart this application' });
     }
 
     const token = auth.split(' ')[1];
@@ -46,7 +46,7 @@ export const requireAuth = (req, res, next) => {
     const payload = jwt.verify(token, getJwtSecret());
     
     if (!payload || typeof payload.username !== 'string') {
-      throw new Error('Invalid token payload');
+      throw new Error('Invalid token payload, missing username, make sure you are logged in');
     }
 
     req.user = payload;
