@@ -4,7 +4,7 @@ import databaseService from '../services/databaseService.js';
 import mobileApiService from '../services/mobileApiService.js';
 // Direct database access will be implemented here
 
-const CACHE_TTL = Number(process.env.DESKTOP_CACHE_TTL) || 5000;
+const CACHE_TTL = Number(process.env.DESKTOP_CACHE_TTL) || 60000;
 const sessionsCache = { timestamp: 0, data: null };
 const departmentsCache = { timestamp: 0, data: null };
 
@@ -413,7 +413,13 @@ export const getDepartments = async (req, res) => {
     console.error('❌ Departments fetch error:', error);
     const isNetworkError = error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND';
     const status = error.response?.status || error.status || 500;
-    
+
+    if (departmentsCache.data) {
+      console.warn('[adminController] getDepartments returning stale cache due to error');
+      res.set('X-Cache', 'stale');
+      return res.json(departmentsCache.data);
+    }
+
     if (isNetworkError) {
       return res.status(503).json({ 
         error: 'Mobile API connection failed',
@@ -764,7 +770,13 @@ export const getAllSessions = async (req, res) => {
     console.error('❌ Get all sessions error:', error);
     const isNetworkError = error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND';
     const status = error.response?.status || error.status || 500;
-    
+
+    if (sessionsCache.data) {
+      console.warn('[adminController] getAllSessions returning stale cache due to error');
+      res.set('X-Cache', 'stale');
+      return res.json(sessionsCache.data);
+    }
+
     if (isNetworkError) {
       return res.status(503).json({ 
         error: 'Mobile API connection failed',

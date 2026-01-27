@@ -142,7 +142,7 @@ export default function DashboardPage() {
     };
 
     refreshAll();
-    const intervalId = window.setInterval(() => refreshAll({ skipLoading: true }), 30000);
+    const intervalId = window.setInterval(() => refreshAll({ skipLoading: true }), 60000);
 
     return () => {
       cancelled = true;

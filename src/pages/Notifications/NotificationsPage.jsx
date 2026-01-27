@@ -115,7 +115,7 @@ export default function NotificationsPage() {
     };
 
     refresh();
-    const intervalId = window.setInterval(refresh, 15000);
+    const intervalId = window.setInterval(refresh, 60000);
 
     return () => {
       cancelled = true;

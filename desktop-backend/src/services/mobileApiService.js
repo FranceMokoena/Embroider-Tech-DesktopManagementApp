@@ -8,12 +8,22 @@ const ensureApiSuffix = (value = DEFAULT_MOBILE_API_URL) => {
   return trimmed.toLowerCase().endsWith('/api') ? trimmed : `${trimmed}/api`;
 };
 
-const MOBILE_API_URL = ensureApiSuffix(process.env.MOBILE_API_URL || DEFAULT_MOBILE_API_URL);
+const isRender =
+  process.env.RENDER === 'true' ||
+  Boolean(process.env.RENDER_SERVICE_ID) ||
+  Boolean(process.env.RENDER_EXTERNAL_URL) ||
+  Boolean(process.env.RENDER_INSTANCE_ID);
+const INTERNAL_MOBILE_API_URL = process.env.MOBILE_API_INTERNAL_URL;
+const MOBILE_API_URL = ensureApiSuffix(
+  (isRender && INTERNAL_MOBILE_API_URL) ? INTERNAL_MOBILE_API_URL : (process.env.MOBILE_API_URL || DEFAULT_MOBILE_API_URL)
+);
 const REQUEST_TIMEOUT = Number(process.env.MOBILE_API_TIMEOUT) || 45000; // Increased timeout
+const DEFAULT_RETRY_AFTER_MS = Number(process.env.MOBILE_API_RETRY_AFTER_MS) || 5000;
 console.info('[mobileApiService] Configuration:', {
   baseURL: MOBILE_API_URL,
   timeout: REQUEST_TIMEOUT,
-  apiKey: MOBILE_API_KEY ? `${MOBILE_API_KEY.substring(0, 4)}...` : 'NOT SET'
+  apiKey: MOBILE_API_KEY ? `${MOBILE_API_KEY.substring(0, 4)}...` : 'NOT SET',
+  renderInternal: isRender && Boolean(INTERNAL_MOBILE_API_URL)
 });
 
 const createClient = (token) => {
@@ -68,6 +78,21 @@ const logError = (method, path, error) => {
   }
 };
 
+const parseRetryAfterMs = (headers = {}) => {
+  const retryAfter = headers['retry-after'] || headers['Retry-After'];
+  if (!retryAfter) return null;
+  const seconds = Number(retryAfter);
+  if (Number.isFinite(seconds)) {
+    return Math.max(1000, seconds * 1000);
+  }
+  const dateMs = Date.parse(retryAfter);
+  if (Number.isFinite(dateMs)) {
+    const diff = dateMs - Date.now();
+    return diff > 0 ? diff : null;
+  }
+  return null;
+};
+
 const makeMobileRequest = async (method, token, path, options = {}, retries = 2) => {
   const client = createClient(token);
   const startTime = Date.now();
@@ -103,19 +128,24 @@ const makeMobileRequest = async (method, token, path, options = {}, retries = 2)
       return handleResponse(response);
     } catch (error) {
       const duration = Date.now() - startTime;
+      const status = error.response?.status ?? error.status;
       const isNetworkError = !error.response && (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND');
-      const isServerError = error.response?.status >= 500;
-      const isClientError = error.response?.status < 500 || error.isClientError;
+      const isServerError = status >= 500;
+      const isRateLimited = status === 429;
+      const isClientError =
+        ((status < 500 && status !== 429) || error.isClientError) && !isRateLimited;
       
-      // Don't retry client errors (4xx)
+      // Don't retry client errors (4xx) except 429
       if (isClientError && !isNetworkError) {
         logError(method, path, error);
         throw error;
       }
       
-      // Retry on network errors or server errors
-      if (attempt < retries && (isNetworkError || isServerError)) {
-        const delayMs = Math.min(1000 * Math.pow(2, attempt), 5000); // Exponential backoff, max 5s
+      // Retry on network errors, server errors, or rate limits
+      if (attempt < retries && (isNetworkError || isServerError || isRateLimited)) {
+        const retryAfterMs = parseRetryAfterMs(error.response?.headers ?? {});
+        const baseDelay = Math.min(1000 * Math.pow(2, attempt), 5000);
+        const delayMs = retryAfterMs || Math.max(DEFAULT_RETRY_AFTER_MS, baseDelay);
         console.warn(
           `[mobileApiService] ${method.toUpperCase()} ${path} failed (attempt ${attempt + 1}/${retries + 1}), retrying in ${delayMs}ms...`,
           { error: error.message || error.code }
