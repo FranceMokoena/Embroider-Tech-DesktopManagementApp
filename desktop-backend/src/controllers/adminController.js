@@ -7,6 +7,7 @@ import mobileApiService from '../services/mobileApiService.js';
 const CACHE_TTL = Number(process.env.DESKTOP_CACHE_TTL) || 60000;
 const sessionsCache = { timestamp: 0, data: null };
 const departmentsCache = { timestamp: 0, data: null };
+const dashboardCache = { timestamp: 0, data: null };
 
 const getMobileTokenFromRequest = (req, res) => {
   const token = req.headers['mobile-token'] || process.env.MOBILE_ADMIN_TOKEN || 'franceman99';
@@ -214,6 +215,8 @@ export const getDashboardStats = async (req, res) => {
 
   try {
     const history = await mobileApiService.getScanHistory(token, {});
+    sessionsCache.data = history;
+    sessionsCache.timestamp = Date.now();
     const sessions = history.sessions ?? [];
     const totalScans = history.totalScans ?? 0;
     const statusBreakdown = {
@@ -279,6 +282,8 @@ export const getDashboardStats = async (req, res) => {
     let departmentDetails = [];
     try {
       const departmentPayload = await mobileApiService.getDepartments(token);
+      departmentsCache.data = departmentPayload;
+      departmentsCache.timestamp = Date.now();
       const rawDepartmentDetails = normalizeDepartmentsPayload(departmentPayload);
       
       // Merge scan counts from departmentStats into departmentDetails
@@ -355,7 +360,7 @@ export const getDashboardStats = async (req, res) => {
 
     const totalUsers = allUsers.length;
 
-    res.json({
+    const responsePayload = {
       success: true,
       data: {
         overview: {
@@ -372,8 +377,19 @@ export const getDashboardStats = async (req, res) => {
         departmentDetails,
         recentActivity
       }
-    });
+    };
+
+    dashboardCache.data = responsePayload;
+    dashboardCache.timestamp = Date.now();
+
+    res.json(responsePayload);
   } catch (error) {
+    if (error.code === 'COOLDOWN_ACTIVE' && dashboardCache.data) {
+      console.warn('[adminController] dashboard stats returning stale cache due to cooldown');
+      res.set('X-Cache', 'stale');
+      return res.json(dashboardCache.data);
+    }
+
     console.error('❌ Dashboard stats error:', error);
     const isNetworkError = error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND';
     const status = error.response?.status || error.status || 500;
@@ -410,6 +426,12 @@ export const getDepartments = async (req, res) => {
     departmentsCache.timestamp = Date.now();
     return res.json(payload);
   } catch (error) {
+    if (error.code === 'COOLDOWN_ACTIVE' && departmentsCache.data) {
+      console.warn('[adminController] getDepartments returning stale cache due to cooldown');
+      res.set('X-Cache', 'stale');
+      return res.json(departmentsCache.data);
+    }
+
     console.error('❌ Departments fetch error:', error);
     const isNetworkError = error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND';
     const status = error.response?.status || error.status || 500;
@@ -767,6 +789,12 @@ export const getAllSessions = async (req, res) => {
     sessionsCache.timestamp = Date.now();
     return res.json(result);
   } catch (error) {
+    if (error.code === 'COOLDOWN_ACTIVE' && sessionsCache.data) {
+      console.warn('[adminController] getAllSessions returning stale cache due to cooldown');
+      res.set('X-Cache', 'stale');
+      return res.json(sessionsCache.data);
+    }
+
     console.error('❌ Get all sessions error:', error);
     const isNetworkError = error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND';
     const status = error.response?.status || error.status || 500;

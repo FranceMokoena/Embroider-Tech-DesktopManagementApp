@@ -19,6 +19,8 @@ const MOBILE_API_URL = ensureApiSuffix(
 );
 const REQUEST_TIMEOUT = Number(process.env.MOBILE_API_TIMEOUT) || 45000; // Increased timeout
 const DEFAULT_RETRY_AFTER_MS = Number(process.env.MOBILE_API_RETRY_AFTER_MS) || 5000;
+const COOLDOWN_MS = Number(process.env.MOBILE_API_COOLDOWN_MS) || 300000;
+let cooldownUntil = 0;
 console.info('[mobileApiService] Configuration:', {
   baseURL: MOBILE_API_URL,
   timeout: REQUEST_TIMEOUT,
@@ -94,6 +96,15 @@ const parseRetryAfterMs = (headers = {}) => {
 };
 
 const makeMobileRequest = async (method, token, path, options = {}, retries = 2) => {
+  const now = Date.now();
+  if (now < cooldownUntil) {
+    const retryAt = new Date(cooldownUntil).toISOString();
+    const error = new Error(`Mobile API is in cooldown until ${retryAt}.`);
+    error.status = 429;
+    error.code = 'COOLDOWN_ACTIVE';
+    throw error;
+  }
+
   const client = createClient(token);
   const startTime = Date.now();
   logRequest(method, path, options.params ?? options.data ?? {});
@@ -157,6 +168,12 @@ const makeMobileRequest = async (method, token, path, options = {}, retries = 2)
       // Final attempt failed
       logError(method, path, error);
       console.error(`[mobileApiService] ${method.toUpperCase()} ${path} failed after ${duration}ms (${attempt + 1} attempts)`);
+
+      if (isRateLimited) {
+        const retryAfterMs = parseRetryAfterMs(error.response?.headers ?? {}) ?? COOLDOWN_MS;
+        cooldownUntil = Date.now() + retryAfterMs;
+        console.warn(`[mobileApiService] cooldown enabled for ${Math.round(retryAfterMs / 1000)}s due to 429`);
+      }
       
       // Provide more helpful error messages
       if (isNetworkError) {
