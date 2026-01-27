@@ -1,28 +1,189 @@
 import bcrypt from 'bcryptjs';
 import { ObjectId } from 'mongodb';
 import databaseService from '../services/databaseService.js';
-import mobileApiService from '../services/mobileApiService.js';
-// Direct database access will be implemented here
 
 const CACHE_TTL = Number(process.env.DESKTOP_CACHE_TTL) || 60000;
 const sessionsCache = { timestamp: 0, data: null };
 const departmentsCache = { timestamp: 0, data: null };
 const dashboardCache = { timestamp: 0, data: null };
 
-const getMobileTokenFromRequest = (req, res) => {
-  const token = req.headers['mobile-token'] || process.env.MOBILE_ADMIN_TOKEN || 'franceman99';
-  if (!token) {
-    console.warn('[adminController] missing mobile-token header and no default token', {
-      method: req.method,
-      path: req.originalUrl
-    });
-    res.status(401).json({ 
-      error: 'Mobile backend token required',
-      message: 'Please ensure mobile-token header is set or MOBILE_ADMIN_TOKEN environment variable is configured'
-    });
-    return null;
+const VALID_DEPARTMENT_STATUSES = new Set(['ACTIVE', 'INACTIVE', 'ARCHIVED']);
+
+const escapeRegex = (value = '') => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const parseDate = (value) => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const normalizeScanStatus = (value) => {
+  if (!value) return '';
+  const text = value.toString().toLowerCase();
+  if (text.includes('repar')) return 'repairable';
+  if (text.includes('beyond') || text.includes('write')) return 'beyond repair';
+  if (text.includes('healthy') || text.includes('production')) return 'healthy';
+  return text;
+};
+
+const buildSessionFilter = async (filters = {}) => {
+  const sessionFilter = {};
+  const startDate = parseDate(filters.startDate);
+  const endDate = parseDate(filters.endDate);
+
+  if (startDate || endDate) {
+    sessionFilter.startTime = {};
+    if (startDate) sessionFilter.startTime.$gte = startDate;
+    if (endDate) sessionFilter.startTime.$lte = endDate;
   }
-  return token;
+
+  if (filters.department) {
+    const rawDepartment = filters.department.toString().trim();
+    if (!rawDepartment) {
+      return sessionFilter;
+    }
+    const usersCollection = await databaseService.getCollection('users');
+    const departmentRegex = new RegExp(`^${escapeRegex(rawDepartment)}$`, 'i');
+    const users = await usersCollection
+      .find({ department: departmentRegex }, { projection: { _id: 1, username: 1, email: 1 } })
+      .toArray();
+    const userIds = users.map((user) => user._id).filter(Boolean);
+    const userIdentifiers = users
+      .flatMap((user) => [user._id?.toString(), user.username, user.email].filter(Boolean));
+
+    const departmentFilters = [
+      { department: departmentRegex },
+      { departmentName: departmentRegex },
+      { techDepartment: departmentRegex }
+    ];
+
+    if (userIds.length) {
+      departmentFilters.push(
+        { technician: { $in: userIds } },
+        { technicianId: { $in: userIds } },
+        { userId: { $in: userIds } }
+      );
+    }
+
+    if (userIdentifiers.length) {
+      departmentFilters.push(
+        { technician: { $in: userIdentifiers } },
+        { technicianId: { $in: userIdentifiers } },
+        { userId: { $in: userIdentifiers } }
+      );
+    }
+
+    sessionFilter.$or = departmentFilters;
+  }
+
+  return sessionFilter;
+};
+
+const getScanHistoryFromDb = async (filters = {}) => {
+  const sessionsCollection = await databaseService.getCollection('tasksessions');
+  const screensCollection = await databaseService.getCollection('screens');
+  const sessionFilter = await buildSessionFilter(filters);
+
+  const sessions = await sessionsCollection
+    .find(sessionFilter)
+    .sort({ startTime: -1 })
+    .toArray();
+
+  if (sessions.length === 0) {
+    return {
+      sessions: [],
+      totalScans: 0,
+      totalReparable: 0,
+      totalBeyondRepair: 0,
+      totalHealthy: 0,
+      totalSessions: 0
+    };
+  }
+
+  const sessionIds = sessions.map((session) => session._id);
+  const sessionIdStrings = sessionIds.map((id) => id.toString());
+  const scans = await screensCollection
+    .find({
+      $or: [
+        { session: { $in: sessionIds } },
+        { sessionId: { $in: sessionIds } },
+        { session: { $in: sessionIdStrings } },
+        { sessionId: { $in: sessionIdStrings } }
+      ]
+    })
+    .toArray();
+
+  const scansBySession = new Map();
+  let totalScans = 0;
+  let totalReparable = 0;
+  let totalBeyondRepair = 0;
+  let totalHealthy = 0;
+
+  scans.forEach((scan) => {
+    const sessionKey = scan.session || scan.sessionId;
+    if (!sessionKey) return;
+
+    const key = sessionKey.toString();
+    const entry = {
+      _id: scan._id,
+      barcode: scan.barcode,
+      status: scan.status,
+      timestamp: scan.timestamp,
+      session: scan.session || scan.sessionId
+    };
+
+    if (!scansBySession.has(key)) {
+      scansBySession.set(key, []);
+    }
+    scansBySession.get(key).push(entry);
+
+    totalScans += 1;
+    const normalizedStatus = normalizeScanStatus(scan.status);
+    if (normalizedStatus === 'repairable') totalReparable += 1;
+    if (normalizedStatus === 'beyond repair') totalBeyondRepair += 1;
+    if (normalizedStatus === 'healthy') totalHealthy += 1;
+  });
+
+  const sessionsPayload = sessions.map((session) => ({
+    _id: session._id,
+    id: session._id,
+    technician: session.technician,
+    startTime: session.startTime,
+    endTime: session.endTime,
+    scans: scansBySession.get(session._id.toString()) || []
+  }));
+
+  return {
+    sessions: sessionsPayload,
+    totalScans,
+    totalReparable,
+    totalBeyondRepair,
+    totalHealthy,
+    totalSessions: sessions.length
+  };
+};
+
+const getDepartmentsFromDb = async (query = {}) => {
+  const departmentsCollection = await databaseService.getCollection('departments');
+  const filter = {};
+
+  if (query.status) {
+    const status = query.status.toString().trim().toUpperCase();
+    if (VALID_DEPARTMENT_STATUSES.has(status)) {
+      filter.status = status;
+    }
+  }
+
+  if (query.code) {
+    filter.code = query.code.toString().trim().toUpperCase();
+  }
+
+  if (query.name) {
+    filter.name = { $regex: query.name.toString().trim(), $options: 'i' };
+  }
+
+  const departments = await departmentsCollection.find(filter).sort({ name: 1 }).toArray();
+  return { departments };
 };
 
 const flattenScans = (sessions = []) =>
@@ -154,15 +315,6 @@ export const getMobileToken = async (req, res) => {
       return res.status(500).json({ error: 'Mobile backend token not configured' });
     }
 
-    // Test the connection with this token
-    try {
-      const connectionTest = await mobileApiService.testConnection(mobileToken);
-      console.info('[adminController] Mobile API connection test:', connectionTest);
-    } catch (testError) {
-      console.warn('[adminController] Mobile API connection test failed:', testError.message);
-      // Don't fail the request, but log the warning
-    }
-
     res.json({
       success: true,
       mobileToken,
@@ -181,20 +333,15 @@ export const getMobileToken = async (req, res) => {
 // Health check endpoint for mobile API
 export const checkMobileApiHealth = async (req, res) => {
   try {
-    const token = getMobileTokenFromRequest(req, res);
-    if (!token) return;
-    
-    const result = await mobileApiService.testConnection(token);
+    const result = await databaseService.testConnection();
     res.json({
       success: result.success,
       message: result.message,
-      status: result.status,
-      code: result.code,
-      details: result.details,
-      mobileApiUrl: process.env.MOBILE_API_URL || 'https://embroider-scann-app.onrender.com/api'
+      status: result.success ? 200 : 500,
+      mode: 'direct-db'
     });
   } catch (error) {
-    console.error('❌ Mobile API health check error:', error);
+    console.error('Database health check error:', error);
     res.status(500).json({
       success: false,
       error: 'Health check failed',
@@ -206,17 +353,18 @@ export const checkMobileApiHealth = async (req, res) => {
 
 // Dashboard Overview
 export const getDashboardStats = async (req, res) => {
-  const token = getMobileTokenFromRequest(req, res);
-  if (!token) return;
   console.info('[adminController] getDashboardStats', {
-    user: req.user?.username,
-    mobileToken: Boolean(token)
+    user: req.user?.username
   });
 
   try {
-    const history = await mobileApiService.getScanHistory(token, {});
+    const now = Date.now();
+    const history =
+      sessionsCache.data && now - sessionsCache.timestamp < CACHE_TTL
+        ? sessionsCache.data
+        : await getScanHistoryFromDb({});
     sessionsCache.data = history;
-    sessionsCache.timestamp = Date.now();
+    sessionsCache.timestamp = now;
     const sessions = history.sessions ?? [];
     const totalScans = history.totalScans ?? 0;
     const statusBreakdown = {
@@ -236,32 +384,32 @@ export const getDashboardStats = async (req, res) => {
       (scan) => new Date(scan.timestamp).getTime() >= sevenDaysAgo
     ).length;
 
-    // Enrich sessions with department info from users/technicians
     const usersCollection = await databaseService.getCollection('users');
     const allUsers = await usersCollection.find({}).toArray();
     const userMap = new Map();
-    allUsers.forEach(user => {
+    allUsers.forEach((user) => {
       if (user._id) {
         userMap.set(user._id.toString(), user);
       }
     });
-    
-    // Enrich sessions with department from technician
-    const enrichedSessions = sessions.map(session => {
+
+    const enrichedSessions = sessions.map((session) => {
       const technicianId = getSessionTechnicianKey(session);
       if (technicianId) {
-        const technician = userMap.get(technicianId.toString()) || 
-                         Array.from(userMap.values()).find(u => 
-                           u.username === technicianId || 
-                           u._id?.toString() === technicianId
-                         );
+        const technician =
+          userMap.get(technicianId.toString()) ||
+          Array.from(userMap.values()).find(
+            (u) =>
+              u.username === technicianId ||
+              u._id?.toString() === technicianId
+          );
         if (technician && technician.department) {
           return { ...session, department: technician.department };
         }
       }
       return session;
     });
-    
+
     const departmentStats = enrichedSessions.reduce((acc, session) => {
       if (!session.department) return acc;
       const dept = session.department;
@@ -278,58 +426,59 @@ export const getDashboardStats = async (req, res) => {
         activeTechnicianKeys.add(key);
       }
     });
+
     let departmentCount = Object.keys(departmentStats).length;
     let departmentDetails = [];
     try {
-      const departmentPayload = await mobileApiService.getDepartments(token);
+      const departmentPayload =
+        departmentsCache.data && now - departmentsCache.timestamp < CACHE_TTL
+          ? departmentsCache.data
+          : await getDepartmentsFromDb({});
       departmentsCache.data = departmentPayload;
       departmentsCache.timestamp = Date.now();
       const rawDepartmentDetails = normalizeDepartmentsPayload(departmentPayload);
-      
-      // Merge scan counts from departmentStats into departmentDetails
-      // Create a map of department name to scan count from actual session data
+
       const departmentScanCounts = {};
-      Object.values(departmentStats).forEach(stat => {
+      Object.values(departmentStats).forEach((stat) => {
         const deptName = stat.department;
         if (deptName) {
           departmentScanCounts[deptName] = stat.scans || 0;
         }
       });
-      
-      // Update departmentDetails with real scan counts
-      departmentDetails = rawDepartmentDetails.map(dept => {
+
+      departmentDetails = rawDepartmentDetails.map((dept) => {
         const deptName = dept.name;
-        // Try to find matching department in departmentStats by name
-        const scanCount = departmentScanCounts[deptName] || 
-                         Object.values(departmentStats).find(stat => 
-                           stat.department && stat.department.toLowerCase() === deptName.toLowerCase()
-                         )?.scans || 
-                         dept.value; // Fallback to original value if no match
-        
+        const scanCount =
+          departmentScanCounts[deptName] ||
+          Object.values(departmentStats).find(
+            (stat) =>
+              stat.department &&
+              stat.department.toLowerCase() === deptName.toLowerCase()
+          )?.scans ||
+          dept.value;
+
         return {
           name: deptName,
           value: scanCount
         };
       });
-      
-      // Also add departments from sessions that might not be in the API response
-      Object.values(departmentStats).forEach(stat => {
+
+      Object.values(departmentStats).forEach((stat) => {
         const deptName = stat.department;
-        if (deptName && !departmentDetails.find(d => d.name === deptName || d.name.toLowerCase() === deptName.toLowerCase())) {
+        if (
+          deptName &&
+          !departmentDetails.find(
+            (d) =>
+              d.name === deptName || d.name.toLowerCase() === deptName.toLowerCase()
+          )
+        ) {
           departmentDetails.push({
             name: deptName,
             value: stat.scans || 0
           });
         }
       });
-      
-      // Log for debugging
-      console.info('[adminController] Department details calculated:', {
-        totalDepartments: departmentDetails.length,
-        departmentsWithScans: departmentDetails.filter(d => d.value > 0).length,
-        totalScans: departmentDetails.reduce((sum, d) => sum + d.value, 0)
-      });
-      
+
       if (departmentDetails.length > departmentCount) {
         departmentCount = departmentDetails.length;
       }
@@ -338,17 +487,21 @@ export const getDashboardStats = async (req, res) => {
         departmentCount = payloadCount;
       }
     } catch (err) {
-      console.error('❌ Dashboard departments fetch error:', err);
-      // Fallback: create departmentDetails from departmentStats
-      departmentDetails = Object.values(departmentStats).map(stat => ({
+      console.error('Departments fetch error:', err);
+      departmentDetails = Object.values(departmentStats).map((stat) => ({
         name: stat.department,
         value: stat.scans || 0
       }));
     }
+
     const activeTechniciansCount = activeTechnicianKeys.size;
 
     const recentSessions = [...enrichedSessions]
-      .sort((a, b) => new Date(b.startTime || b.start || 0) - new Date(a.startTime || a.start || 0))
+      .sort(
+        (a, b) =>
+          new Date(b.startTime || b.start || 0) -
+          new Date(a.startTime || a.start || 0)
+      )
       .slice(0, 3);
 
     const recentActivity = {
@@ -384,36 +537,19 @@ export const getDashboardStats = async (req, res) => {
 
     res.json(responsePayload);
   } catch (error) {
-    if (error.code === 'COOLDOWN_ACTIVE' && dashboardCache.data) {
-      console.warn('[adminController] dashboard stats returning stale cache due to cooldown');
+    console.error('Dashboard stats error:', error);
+    if (dashboardCache.data) {
       res.set('X-Cache', 'stale');
       return res.json(dashboardCache.data);
     }
-
-    console.error('❌ Dashboard stats error:', error);
-    const isNetworkError = error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND';
-    const status = error.response?.status || error.status || 500;
-    
-    if (isNetworkError) {
-      return res.status(503).json({ 
-        error: 'Mobile API connection failed',
-        message: `Cannot connect to mobile backend. Please verify the mobile API is running and accessible at ${process.env.MOBILE_API_URL || 'https://embroider-scann-app.onrender.com/api'}`,
-        details: error.message
-      });
-    }
-    
-    return res.status(status >= 400 && status < 500 ? status : 500).json({ 
-      error: 'Failed to fetch dashboard statistics, please try to logout and login again',
-      message: error.message || 'Unknown error occurred',
-      details: error.response?.data || error.details
+    return res.status(500).json({
+      error: 'Failed to fetch dashboard statistics, please try again',
+      message: error.message || 'Unknown error occurred'
     });
   }
 };
 
 export const getDepartments = async (req, res) => {
-  const token = getMobileTokenFromRequest(req, res);
-  if (!token) return;
-
   const now = Date.now();
   if (departmentsCache.data && now - departmentsCache.timestamp < CACHE_TTL) {
     console.info('[adminController] getDepartments cache hit');
@@ -421,54 +557,86 @@ export const getDepartments = async (req, res) => {
   }
 
   try {
-    const payload = await mobileApiService.getDepartments(token);
+    const payload = await getDepartmentsFromDb(req.query || {});
     departmentsCache.data = payload;
     departmentsCache.timestamp = Date.now();
     return res.json(payload);
   } catch (error) {
-    if (error.code === 'COOLDOWN_ACTIVE' && departmentsCache.data) {
-      console.warn('[adminController] getDepartments returning stale cache due to cooldown');
-      res.set('X-Cache', 'stale');
-      return res.json(departmentsCache.data);
-    }
-
-    console.error('❌ Departments fetch error:', error);
-    const isNetworkError = error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND';
-    const status = error.response?.status || error.status || 500;
+    console.error('Departments fetch error:', error);
 
     if (departmentsCache.data) {
-      console.warn('[adminController] getDepartments returning stale cache due to error');
       res.set('X-Cache', 'stale');
       return res.json(departmentsCache.data);
     }
 
-    if (isNetworkError) {
-      return res.status(503).json({ 
-        error: 'Mobile API connection failed',
-        message: 'Cannot connect to mobile backend to fetch departments, please verify the mobile API is running and accessible',
-        details: error.message
-      });
-    }
-    
-    return res.status(status >= 400 && status < 500 ? status : 500).json({ 
-      error: 'Failed to fetch departments, reload and login again',
-      message: error.message || 'Unknown error occurred',
-      details: error.response?.data
+    return res.status(500).json({
+      error: 'Failed to fetch departments, please try again',
+      message: error.message || 'Unknown error occurred'
     });
   }
 };
 
 export const createDepartment = async (req, res) => {
-  const token = getMobileTokenFromRequest(req, res);
-  if (!token) return;
-
   try {
-    const payload = req.body || {};
-    const result = await mobileApiService.createDepartment(token, payload);
-    return res.status(201).json(result);
+    const {
+      name,
+      code,
+      description,
+      status = 'ACTIVE',
+      managerName,
+      managerEmail,
+      managerPhone,
+      locationName,
+      locationDetails
+    } = req.body || {};
+
+    if (!name || !code) {
+      return res.status(400).json({ error: 'Department name and code are required' });
+    }
+
+    const normalizedStatus = status.toString().trim().toUpperCase();
+    if (!VALID_DEPARTMENT_STATUSES.has(normalizedStatus)) {
+      return res.status(400).json({
+        error: `Status must be one of: ${Array.from(VALID_DEPARTMENT_STATUSES).join(', ')}`
+      });
+    }
+
+    const normalizedCode = code.toString().trim().toUpperCase();
+    const departmentsCollection = await databaseService.getCollection('departments');
+    const existing = await departmentsCollection.findOne({ code: normalizedCode });
+    if (existing) {
+      return res.status(409).json({ error: 'Department code already exists' });
+    }
+
+    const department = {
+      name: name.toString().trim(),
+      code: normalizedCode,
+      description,
+      status: normalizedStatus,
+      managerName,
+      managerEmail,
+      managerPhone,
+      locationName,
+      locationDetails,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const result = await departmentsCollection.insertOne(department);
+
+    departmentsCache.data = null;
+    departmentsCache.timestamp = 0;
+
+    return res.status(201).json({
+      message: 'Department created',
+      department: { ...department, _id: result.insertedId }
+    });
   } catch (error) {
-    console.error('? Create department error:', error);
-    return res.status(500).json({ error: 'Failed to create department, department details already exist, try to delete the existing department first and recreate' });
+    console.error('Create department error:', error);
+    return res.status(500).json({
+      error: 'Failed to create department',
+      message: error.message || 'Unknown error occurred'
+    });
   }
 };
 
@@ -658,9 +826,6 @@ export const deleteUser = async (req, res) => {
 
 // Scan Management
 export const getAllScans = async (req, res) => {
-  const token = getMobileTokenFromRequest(req, res);
-  if (!token) return;
-
   try {
     const filters = {
       department: req.query.department,
@@ -669,7 +834,7 @@ export const getAllScans = async (req, res) => {
     };
     console.info('[adminController] getAllScans start', { filters });
     const startTime = Date.now();
-    const result = await mobileApiService.getScanHistory(token, filters);
+    const result = await getScanHistoryFromDb(filters);
     const duration = Date.now() - startTime;
     console.info('[adminController] getAllScans complete', {
       duration,
@@ -677,22 +842,10 @@ export const getAllScans = async (req, res) => {
     });
     return res.json(result);
   } catch (error) {
-    console.error('❌ Get all scans error:', error);
-    const isNetworkError = error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND';
-    const status = error.response?.status || error.status || 500;
-    
-    if (isNetworkError) {
-      return res.status(503).json({ 
-        error: 'Mobile API connection failed',
-        message: 'Cannot connect to mobile backend to fetch scans',
-        details: error.message
-      });
-    }
-    
-    return res.status(status >= 400 && status < 500 ? status : 500).json({ 
+    console.error('Get all scans error:', error);
+    return res.status(500).json({
       error: 'Failed to fetch scans',
-      message: error.message || 'Unknown error occurred',
-      details: error.response?.data
+      message: error.message || 'Unknown error occurred'
     });
   }
 };
@@ -743,28 +896,28 @@ export const archiveScan = (_req, res) =>
   res.status(501).json({ error: 'Archiving individual scans is handled by the mobile API' });
 
 export const deleteScreens = async (req, res) => {
-  const token = getMobileTokenFromRequest(req, res);
-  if (!token) return;
-
   try {
-    const payload = req.body || {};
-    const { barcodes } = payload;
+    const { barcodes } = req.body || {};
     if (!Array.isArray(barcodes) || barcodes.length === 0) {
       return res.status(400).json({ error: 'At least one barcode is required' });
     }
-    const result = await mobileApiService.deleteScreens(token, { barcodes });
-    return res.json(result);
+
+    const screensCollection = await databaseService.getCollection('screens');
+    const result = await screensCollection.deleteMany({ barcode: { $in: barcodes } });
+
+    return res.json({
+      message: 'Screens deleted successfully',
+      deletedCount: result.deletedCount,
+      requestedCount: barcodes.length
+    });
   } catch (error) {
-    console.error('? Delete screens error:', error);
+    console.error('Delete screens error:', error);
     return res.status(500).json({ error: 'Failed to delete screens' });
   }
 };
 
 // Session Management
 export const getAllSessions = async (req, res) => {
-  const token = getMobileTokenFromRequest(req, res);
-  if (!token) return;
-
   const now = Date.now();
   if (sessionsCache.data && now - sessionsCache.timestamp < CACHE_TTL) {
     console.info('[adminController] getAllSessions cache hit');
@@ -779,7 +932,7 @@ export const getAllSessions = async (req, res) => {
     };
     console.info('[adminController] getAllSessions start', { filters });
     const startTime = Date.now();
-    const result = await mobileApiService.getScanHistory(token, filters);
+    const result = await getScanHistoryFromDb(filters);
     const duration = Date.now() - startTime;
     console.info('[adminController] getAllSessions complete', {
       duration,
@@ -789,34 +942,16 @@ export const getAllSessions = async (req, res) => {
     sessionsCache.timestamp = Date.now();
     return res.json(result);
   } catch (error) {
-    if (error.code === 'COOLDOWN_ACTIVE' && sessionsCache.data) {
-      console.warn('[adminController] getAllSessions returning stale cache due to cooldown');
-      res.set('X-Cache', 'stale');
-      return res.json(sessionsCache.data);
-    }
-
-    console.error('❌ Get all sessions error:', error);
-    const isNetworkError = error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND';
-    const status = error.response?.status || error.status || 500;
+    console.error('Get all sessions error:', error);
 
     if (sessionsCache.data) {
-      console.warn('[adminController] getAllSessions returning stale cache due to error');
       res.set('X-Cache', 'stale');
       return res.json(sessionsCache.data);
     }
 
-    if (isNetworkError) {
-      return res.status(503).json({ 
-        error: 'Mobile API connection failed',
-        message: 'Cannot connect to mobile backend to fetch sessions',
-        details: error.message
-      });
-    }
-    
-    return res.status(status >= 400 && status < 500 ? status : 500).json({ 
+    return res.status(500).json({
       error: 'Failed to fetch sessions',
-      message: error.message || 'Unknown error occurred',
-      details: error.response?.data
+      message: error.message || 'Unknown error occurred'
     });
   }
 };
@@ -838,17 +973,32 @@ export const deleteSession = async (req, res) => {
     const screensCollection = await databaseService.getCollection('screens');
 
     // Check if session exists
-    const existingSession = await sessionsCollection.findOne({ _id: new ObjectId(id) });
+    const sessionIdCandidates = [];
+    if (ObjectId.isValid(id)) {
+      sessionIdCandidates.push(new ObjectId(id));
+    }
+    sessionIdCandidates.push(id);
+
+    const existingSession = await sessionsCollection.findOne({
+      _id: { $in: sessionIdCandidates }
+    });
     if (!existingSession) {
       return res.status(404).json({ error: 'Session not found' });
     }
 
     // Delete associated scans first
-    const scanDeleteResult = await screensCollection.deleteMany({ session: new ObjectId(id) });
+    const scanDeleteResult = await screensCollection.deleteMany({
+      $or: [
+        { session: { $in: sessionIdCandidates } },
+        { sessionId: { $in: sessionIdCandidates } }
+      ]
+    });
     console.log(`🗑️ Deleted ${scanDeleteResult.deletedCount} associated scans`);
 
     // Delete session from database
-    const result = await sessionsCollection.deleteOne({ _id: new ObjectId(id) });
+    const result = await sessionsCollection.deleteOne({
+      _id: { $in: sessionIdCandidates }
+    });
 
     if (result.deletedCount === 0) {
       return res.status(404).json({ error: 'Session not found' });
@@ -872,19 +1022,16 @@ export const deleteSession = async (req, res) => {
 
 // Search and Filter
 export const searchScans = async (req, res) => {
-  const token = getMobileTokenFromRequest(req, res);
-  if (!token) return;
-
   try {
     const filters = {
       department: req.query.department,
       startDate: req.query.startDate,
       endDate: req.query.endDate
     };
-    const result = await mobileApiService.getScanHistory(token, filters);
+    const result = await getScanHistoryFromDb(filters);
     return res.json(result);
   } catch (error) {
-    console.error('❌ Search scans error:', error);
+    console.error('Search scans error:', error);
     return res.status(500).json({ error: 'Failed to search scans' });
   }
 };

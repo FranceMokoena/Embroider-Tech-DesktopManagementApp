@@ -102,6 +102,7 @@ const makeMobileRequest = async (method, token, path, options = {}, retries = 2)
     const error = new Error(`Mobile API is in cooldown until ${retryAt}.`);
     error.status = 429;
     error.code = 'COOLDOWN_ACTIVE';
+    error.retryAt = retryAt;
     throw error;
   }
 
@@ -172,6 +173,7 @@ const makeMobileRequest = async (method, token, path, options = {}, retries = 2)
       if (isRateLimited) {
         const retryAfterMs = parseRetryAfterMs(error.response?.headers ?? {}) ?? COOLDOWN_MS;
         cooldownUntil = Date.now() + retryAfterMs;
+        error.retryAt = new Date(cooldownUntil).toISOString();
         console.warn(`[mobileApiService] cooldown enabled for ${Math.round(retryAfterMs / 1000)}s due to 429`);
       }
       

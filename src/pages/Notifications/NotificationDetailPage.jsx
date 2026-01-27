@@ -11,6 +11,7 @@ import {
   buildScanRows,
   buildUsersLookup
 } from '../../utils/sessionAggregators';
+import { buildStatusNotice } from '../../utils/errorMessaging';
 
 const STATUS_CONFIG = {
   production: {
@@ -78,7 +79,7 @@ export default function NotificationDetailPage() {
       const lookup = buildUsersLookup(usersResponse?.data ?? []);
       setScanRows(buildScanRows(sessions, lookup));
     } catch (err) {
-      setError(err.message || 'Failed to load scan details');
+      setError(err);
     } finally {
       setLoading(false);
     }
@@ -113,7 +114,7 @@ export default function NotificationDetailPage() {
         await deleteScreens({ barcodes: [barcode] });
         setScanRows((prev) => prev.filter((row) => row.barcode !== barcode));
       } catch (err) {
-        setError(err.message || 'Failed to delete scan');
+        setError(err);
       } finally {
         setDeletingIds((prev) => prev.filter((value) => value !== barcode));
       }
@@ -129,7 +130,7 @@ export default function NotificationDetailPage() {
       await deleteScreens({ barcodes: filteredScans.map((screen) => screen.barcode) });
       setScanRows((prev) => prev.filter((row) => normalizeStatusValue(row.status) !== config.statusFilter));
     } catch (err) {
-      setError(err.message || 'Failed to delete scans');
+      setError(err);
     } finally {
       setDeletingAll(false);
     }
@@ -173,7 +174,18 @@ export default function NotificationDetailPage() {
           </div>
         </div>
         <p className="notifications-detail__label">Scans ready for action</p>
-        {error && <p className="dashboard-page__status dashboard-page__status--error">{error}</p>}
+        {error && (() => {
+          const notice = buildStatusNotice(error, 'Failed to load scan details');
+          return (
+            <p
+              className={`dashboard-page__status ${
+                notice?.tone === 'error' ? 'dashboard-page__status--error' : 'dashboard-page__status--info'
+              }`}
+            >
+              {notice?.message}
+            </p>
+          );
+        })()}
         {loading && <p className="dashboard-page__status">Loading scans...</p>}
         {!loading && !filteredScans.length && (
           <p className="notifications-detail__empty">There are no scans yet for this category.</p>

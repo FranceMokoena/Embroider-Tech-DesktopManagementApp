@@ -7,6 +7,7 @@ import {
   buildScanRows,
   buildUsersLookup
 } from '../../utils/sessionAggregators';
+import { buildStatusNotice } from '../../utils/errorMessaging';
 
 const LAST_SEEN_KEY = 'notifications.lastSeenCounts';
 
@@ -100,7 +101,7 @@ export default function NotificationsPage() {
       setScanRows(buildScanRows(sessions, lookup));
       setError(null);
     } catch (err) {
-      setError(err.message || 'Failed to load notifications');
+      setError(err);
     } finally {
       setLoading(false);
     }
@@ -162,7 +163,18 @@ export default function NotificationsPage() {
       </header>
 
       {loading && <p className="dashboard-page__status">Loading notifications…</p>}
-      {error && <p className="dashboard-page__status dashboard-page__status--error">{error}</p>}
+      {error && (() => {
+        const notice = buildStatusNotice(error, 'Failed to load notifications');
+        return (
+          <p
+            className={`dashboard-page__status ${
+              notice?.tone === 'error' ? 'dashboard-page__status--error' : 'dashboard-page__status--info'
+            }`}
+          >
+            {notice?.message}
+          </p>
+        );
+      })()}
 
       <section className="notification-list">
         {renderedGroups.map((group) => (

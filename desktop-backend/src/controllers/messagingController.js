@@ -1,5 +1,4 @@
-import moment from 'moment';
-// TODO: Implement direct database access
+import databaseService from '../services/databaseService.js';
 
 // In-memory message storage (in production, use a database)
 let messages = [];
@@ -14,16 +13,17 @@ export const sendMessage = async (req, res) => {
       return res.status(400).json({ error: 'Recipients, subject, and message are required' });
     }
 
-    const token = req.headers['mobile-token'];
-    if (!token) {
-      return res.status(401).json({ error: 'Mobile backend token required' });
-    }
-
-    // Validate recipients exist
-    const allUsers = await mobileApiService.getAllUsers(token);
-    const validRecipients = recipients.filter(recipient => 
-      allUsers.data?.some(user => user._id === recipient || user.username === recipient)
-    );
+    const usersCollection = await databaseService.getCollection('users');
+    const allUsers = await usersCollection
+      .find({}, { projection: { _id: 1, username: 1 } })
+      .toArray();
+    const validRecipients = recipients.filter((recipient) => {
+      const recipientKey = recipient?.toString ? recipient.toString() : String(recipient);
+      return allUsers.some(
+        (user) =>
+          user._id?.toString() === recipientKey || user.username === recipientKey
+      );
+    });
 
     if (validRecipients.length === 0) {
       return res.status(400).json({ error: 'No valid recipients found' });
@@ -253,22 +253,19 @@ export const sendBroadcastMessage = async (req, res) => {
       return res.status(400).json({ error: 'Subject and message are required' });
     }
 
-    const token = req.headers['mobile-token'];
-    if (!token) {
-      return res.status(401).json({ error: 'Mobile backend token required' });
-    }
-
-    // Get all technicians
-    const allUsers = await mobileApiService.getAllUsers(token);
-    const technicians = allUsers.data?.filter(user => 
-      user.role === 'technician' || !user.role
-    ) || [];
+    const usersCollection = await databaseService.getCollection('users');
+    const allUsers = await usersCollection
+      .find({}, { projection: { _id: 1, username: 1, role: 1 } })
+      .toArray();
+    const technicians = allUsers.filter(
+      (user) => user.role === 'technician' || !user.role
+    );
 
     if (technicians.length === 0) {
       return res.status(400).json({ error: 'No technicians found' });
     }
 
-    const recipientIds = technicians.map(tech => tech._id);
+    const recipientIds = technicians.map((tech) => tech._id?.toString());
 
     const newMessage = {
       id: Date.now().toString(),

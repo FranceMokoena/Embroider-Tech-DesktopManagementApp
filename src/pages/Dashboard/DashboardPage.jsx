@@ -11,6 +11,7 @@ import {
   extractSessionsFromResponse,
   normalizeDepartmentKey
 } from '../../utils/sessionAggregators';
+import { buildStatusNotice } from '../../utils/errorMessaging';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
@@ -132,7 +133,7 @@ export default function DashboardPage() {
         setDepartmentSessionTotals(buildDepartmentScanTotals(sessions, users));
       } catch (err) {
         if (!cancelled) {
-          setError(err.message || 'Failed to load dashboard data');
+          setError(err);
         }
       } finally {
         if (!skipLoading && !cancelled) {
@@ -282,10 +283,17 @@ export default function DashboardPage() {
   }
 
   if (error) {
+    const notice = buildStatusNotice(error, 'Failed to load dashboard data');
     return (
       <div className="dashboard-page">
         <div className="dashboard-page__content">
-          <p className="dashboard-page__status dashboard-page__status--error">{error}</p>
+          <p
+            className={`dashboard-page__status ${
+              notice?.tone === 'error' ? 'dashboard-page__status--error' : 'dashboard-page__status--info'
+            }`}
+          >
+            {notice?.message}
+          </p>
         </div>
       </div>
     );

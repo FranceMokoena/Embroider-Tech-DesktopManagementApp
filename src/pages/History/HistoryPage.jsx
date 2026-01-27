@@ -8,6 +8,7 @@ import {
   buildUsersLookup,
   buildScanRows
 } from '../../utils/sessionAggregators';
+import { buildStatusNotice } from '../../utils/errorMessaging';
 
 const PAGE_SIZE = 12;
 
@@ -45,7 +46,7 @@ export default function HistoryPage() {
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err.message || 'Unable to load history');
+          setError(err);
         }
       })
       .finally(() => {
@@ -168,7 +169,18 @@ export default function HistoryPage() {
       </header>
 
       {loading && <p className="dashboard-page__status">Loading history...</p>}
-      {error && <p className="dashboard-page__status dashboard-page__status--error">{error}</p>}
+      {error && (() => {
+        const notice = buildStatusNotice(error, 'Unable to load history');
+        return (
+          <p
+            className={`dashboard-page__status ${
+              notice?.tone === 'error' ? 'dashboard-page__status--error' : 'dashboard-page__status--info'
+            }`}
+          >
+            {notice?.message}
+          </p>
+        );
+      })()}
 
       {!loading && !error && (
         <>

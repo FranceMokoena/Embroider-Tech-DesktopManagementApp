@@ -41,6 +41,10 @@ const handleResponse = async (response) => {
     const error = new Error(message);
     error.status = response.status;
     error.details = payload;
+    if (payload && typeof payload === 'object' && payload.cooldown) {
+      error.isCooldown = true;
+      error.retryAt = payload.retryAt;
+    }
     throw error;
   }
 

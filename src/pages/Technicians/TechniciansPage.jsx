@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import './TechniciansPage.css';
 import { createUser, deleteUser, getDepartments, getSessions, getUsers, updateUser } from '../../services/apiClient';
+import { buildStatusNotice } from '../../utils/errorMessaging';
 
 const PAGE_SIZE = 12;
 
@@ -169,7 +170,7 @@ export default function TechniciansPage() {
       const users = usersResponse?.data ?? [];
       setTechnicians(users.map((tech) => mapTechnician(tech, lookup, scanTotals)));
     } catch (err) {
-      setError(err.message || 'Failed to load technicians');
+      setError(err);
     } finally {
       setLoading(false);
     }
@@ -330,9 +331,16 @@ export default function TechniciansPage() {
   }
 
   if (error) {
+    const notice = buildStatusNotice(error, 'Failed to load technicians');
     return (
       <div className="page-view">
-        <p className="dashboard-page__status dashboard-page__status--error">{error}</p>
+        <p
+          className={`dashboard-page__status ${
+            notice?.tone === 'error' ? 'dashboard-page__status--error' : 'dashboard-page__status--info'
+          }`}
+        >
+          {notice?.message}
+        </p>
       </div>
     );
   }

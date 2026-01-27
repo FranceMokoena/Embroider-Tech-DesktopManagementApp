@@ -23,6 +23,10 @@
   color: #fca5a5;
 }
 
+.theme-dark .dashboard-page .dashboard-page__status--info {
+  color: #93c5fd;
+}
+
 .theme-dark .dashboard-page .dashboard-export__button {
   background: #1e293b;
   color: #e2e8f0;
@@ -175,6 +179,10 @@
 
 .dashboard-page__status--error {
   color: #b91c1c;
+}
+
+.dashboard-page__status--info {
+  color: #2563eb;
 }
 
 .pie-row {

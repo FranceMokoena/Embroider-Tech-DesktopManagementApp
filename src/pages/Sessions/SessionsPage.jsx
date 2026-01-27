@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import './SessionsPage.css';
 import { getDepartments, getSessions, getUsers } from '../../services/apiClient';
+import { buildStatusNotice } from '../../utils/errorMessaging';
 
 const ACTIVITY_OPTIONS = ['LOGIN', 'LOGOUT', 'STARTED SESSION', 'SCANNING'];
 const PAGE_SIZE = 12;
@@ -253,7 +254,7 @@ export default function SessionsPage() {
       setSessionList(enrichedSessions);
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Failed to load sessions');
+      setError(err);
     } finally {
       setLoading(false);
     }
@@ -450,7 +451,18 @@ export default function SessionsPage() {
       </section>
 
       {loading && <p className="dashboard-page__status">Loading sessions…</p>}
-      {error && <p className="dashboard-page__status dashboard-page__status--error">{error}</p>}
+      {error && (() => {
+        const notice = buildStatusNotice(error, 'Failed to load sessions');
+        return (
+          <p
+            className={`dashboard-page__status ${
+              notice?.tone === 'error' ? 'dashboard-page__status--error' : 'dashboard-page__status--info'
+            }`}
+          >
+            {notice?.message}
+          </p>
+        );
+      })()}
 
       {!loading && !error && (
         <section className="session-table-section">

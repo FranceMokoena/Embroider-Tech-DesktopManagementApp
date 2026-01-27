@@ -7,6 +7,7 @@ import {
   buildUsersLookup,
   buildScanRows
 } from '../../utils/sessionAggregators';
+import { buildStatusNotice } from '../../utils/errorMessaging';
 
 const PAGE_SIZE = 12;
 
@@ -98,7 +99,7 @@ const AllScreensPage = () => {
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err.message || 'Unable to load screens');
+          setError(err);
         }
       })
       .finally(() => {
@@ -220,7 +221,18 @@ const AllScreensPage = () => {
       </header>
 
       {loading && <p className="dashboard-page__status">Loading screensƒ?İ</p>}
-      {error && <p className="dashboard-page__status dashboard-page__status--error">{error}</p>}
+      {error && (() => {
+        const notice = buildStatusNotice(error, 'Unable to load screens');
+        return (
+          <p
+            className={`dashboard-page__status ${
+              notice?.tone === 'error' ? 'dashboard-page__status--error' : 'dashboard-page__status--info'
+            }`}
+          >
+            {notice?.message}
+          </p>
+        );
+      })()}
 
       {!loading && !error && (
         <>

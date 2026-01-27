@@ -8,6 +8,7 @@ import {
   extractSessionsFromResponse,
   normalizeDepartmentKey
 } from '../../utils/sessionAggregators';
+import { buildStatusNotice } from '../../utils/errorMessaging';
 
 const STATUS_OPTIONS = ['ACTIVE', 'INACTIVE', 'ARCHIVED'];
 const PAGE_SIZE = 12;
@@ -55,7 +56,7 @@ export default function DepartmentsPage() {
       const response = await getDepartments();
       setDepartments(resolveDepartmentList(response));
     } catch (err) {
-      setError(err.message || 'Failed to load departments');
+      setError(err);
     } finally {
       setLoading(false);
     }
@@ -348,7 +349,18 @@ export default function DepartmentsPage() {
       </header>
 
       {loading && <p className="dashboard-page__status">Loading departments…</p>}
-      {error && <p className="dashboard-page__status dashboard-page__status--error">{error}</p>}
+      {error && (() => {
+        const notice = buildStatusNotice(error, 'Failed to load departments');
+        return (
+          <p
+            className={`dashboard-page__status ${
+              notice?.tone === 'error' ? 'dashboard-page__status--error' : 'dashboard-page__status--info'
+            }`}
+          >
+            {notice?.message}
+          </p>
+        );
+      })()}
 
       {!loading && !error && (
         <div className="department-table-container">
