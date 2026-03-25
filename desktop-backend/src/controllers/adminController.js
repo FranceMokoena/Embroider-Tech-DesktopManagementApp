@@ -7,6 +7,31 @@ const sessionsCache = { timestamp: 0, data: null };
 const departmentsCache = { timestamp: 0, data: null };
 const dashboardCache = { timestamp: 0, data: null };
 
+const resetSessionsCache = () => {
+  sessionsCache.data = null;
+  sessionsCache.timestamp = 0;
+};
+
+const resetDepartmentsCache = () => {
+  departmentsCache.data = null;
+  departmentsCache.timestamp = 0;
+};
+
+const resetDashboardCache = () => {
+  dashboardCache.data = null;
+  dashboardCache.timestamp = 0;
+};
+
+const resetScanDerivedCaches = () => {
+  resetSessionsCache();
+  resetDashboardCache();
+};
+
+const resetUserDerivedCaches = () => {
+  resetSessionsCache();
+  resetDashboardCache();
+};
+
 const VALID_DEPARTMENT_STATUSES = new Set(['ACTIVE', 'INACTIVE', 'ARCHIVED']);
 
 const escapeRegex = (value = '') => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -624,8 +649,8 @@ export const createDepartment = async (req, res) => {
 
     const result = await departmentsCollection.insertOne(department);
 
-    departmentsCache.data = null;
-    departmentsCache.timestamp = 0;
+    resetDepartmentsCache();
+    resetDashboardCache();
 
     return res.status(201).json({
       message: 'Department created',
@@ -699,6 +724,7 @@ export const createUser = async (req, res) => {
     };
 
     const result = await usersCollection.insertOne(newUser);
+    resetUserDerivedCaches();
 
     console.log('✅ User created successfully');
     return res.status(201).json({
@@ -775,6 +801,8 @@ export const updateUser = async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    resetUserDerivedCaches();
+
     console.log('✅ User updated successfully');
     return res.json({ 
       success: true, 
@@ -810,6 +838,8 @@ export const deleteUser = async (req, res) => {
     if (result.deletedCount === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
+
+    resetUserDerivedCaches();
 
     console.log('✅ User deleted successfully');
     return res.json({
@@ -879,6 +909,8 @@ export const deleteScan = async (req, res) => {
       return res.status(404).json({ error: 'Scan not found' });
     }
 
+    resetScanDerivedCaches();
+
     console.log('✅ Scan deleted successfully');
     return res.json({
       success: true,
@@ -904,6 +936,7 @@ export const deleteScreens = async (req, res) => {
 
     const screensCollection = await databaseService.getCollection('screens');
     const result = await screensCollection.deleteMany({ barcode: { $in: barcodes } });
+    resetScanDerivedCaches();
 
     return res.json({
       message: 'Screens deleted successfully',
@@ -1003,6 +1036,8 @@ export const deleteSession = async (req, res) => {
     if (result.deletedCount === 0) {
       return res.status(404).json({ error: 'Session not found' });
     }
+
+    resetScanDerivedCaches();
 
     console.log('✅ Session deleted successfully');
     return res.json({
