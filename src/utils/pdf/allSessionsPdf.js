@@ -5,7 +5,7 @@ const baseHeader = (pdf) => {
   pdf.rect(0, 0, 210, 30, 'F');
   pdf.setFontSize(20);
   pdf.setTextColor(255, 255, 255);
-  pdf.text('EmbroideryTech', 105, 15, { align: 'center' });
+  pdf.text('Amrod Digital Asset Tracking Management System', 105, 15, { align: 'center' });
   pdf.setFontSize(14);
   pdf.text('Sessions Report', 105, 25, { align: 'center' });
 };
@@ -15,7 +15,7 @@ const drawFooter = (pdf) => {
   pdf.rect(20, 270, 170, 25, 'F');
   pdf.setFontSize(9);
   pdf.setTextColor(255, 255, 255);
-  pdf.text('Compiled by EmbroideryTech Desktop Management System', 105, 280, { align: 'center' });
+  pdf.text('Compiled by Amrod Digital Asset Tracking Management System', 105, 280, { align: 'center' });
 };
 
 export const generateAllSessionsReport = (sessions, filters = {}) => {

@@ -2,6 +2,10 @@ const API_BASE = process.env.REACT_APP_DESKTOP_API || 'http://localhost:5001';
 const DEFAULT_DESKTOP_TOKEN = process.env.REACT_APP_DESKTOP_SERVICE_TOKEN || 'franceman99';
 const MOBILE_TOKEN_KEY = 'mobileToken';
 const ADMIN_TOKEN_KEY = 'adminToken';
+const GET_CACHE_TTL_MS = Number(process.env.REACT_APP_GET_CACHE_TTL_MS) || 5000;
+
+const responseCache = new Map();
+const inflightRequests = new Map();
 
 const getMobileToken = () => localStorage.getItem(MOBILE_TOKEN_KEY);
 const getAdminToken = () => localStorage.getItem(ADMIN_TOKEN_KEY);
@@ -51,14 +55,77 @@ const handleResponse = async (response) => {
   return payload;
 };
 
-const request = (path, options = {}, opts = {}) =>
-  fetch(`${API_BASE}${path}`, {
+const normalizeMethod = (method) => (method || 'GET').toUpperCase();
+
+const shouldCacheRequest = (method, opts = {}) =>
+  normalizeMethod(method) === 'GET' && opts.cache !== 'no-store';
+
+const buildCacheKey = (path, opts = {}) =>
+  `${opts.useMobileToken === false ? 'admin' : 'mobile'}:${path}`;
+
+const readCachedPayload = (cacheKey) => {
+  const cached = responseCache.get(cacheKey);
+  if (!cached) return null;
+  if (Date.now() - cached.timestamp > GET_CACHE_TTL_MS) {
+    responseCache.delete(cacheKey);
+    return null;
+  }
+  return cached.payload;
+};
+
+export const clearApiGetCache = () => {
+  responseCache.clear();
+  inflightRequests.clear();
+};
+
+const request = (path, options = {}, opts = {}) => {
+  const method = normalizeMethod(options.method);
+  const cacheable = shouldCacheRequest(method, opts);
+  const cacheKey = cacheable ? buildCacheKey(path, opts) : null;
+
+  if (cacheKey) {
+    const cachedPayload = readCachedPayload(cacheKey);
+    if (cachedPayload) {
+      return Promise.resolve(cachedPayload);
+    }
+
+    const inflight = inflightRequests.get(cacheKey);
+    if (inflight) {
+      return inflight;
+    }
+  }
+
+  const requestPromise = fetch(`${API_BASE}${path}`, {
     ...options,
     cache: 'no-store',
     headers: {
       ...buildHeaders(options.headers, opts.useMobileToken ?? true)
     }
-  }).then(handleResponse);
+  })
+    .then(handleResponse)
+    .then((payload) => {
+      if (cacheKey) {
+        responseCache.set(cacheKey, {
+          timestamp: Date.now(),
+          payload
+        });
+      } else if (method !== 'GET') {
+        clearApiGetCache();
+      }
+      return payload;
+    })
+    .finally(() => {
+      if (cacheKey) {
+        inflightRequests.delete(cacheKey);
+      }
+    });
+
+  if (cacheKey) {
+    inflightRequests.set(cacheKey, requestPromise);
+  }
+
+  return requestPromise;
+};
 
 const buildQueryString = (params = {}) => {
   const search = new URLSearchParams();

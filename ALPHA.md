@@ -123,7 +123,7 @@ The desktop backend expects these names; do not rename unless you update all que
 - It builds scan rows and counts new scans per status (healthy, repairable, beyond repair).
 - Notification bell shows total NEW count and **shakes until clicked**.
 
-### Two separate �seen� counters
+### Two separate �seen� counters
 - `notifications.lastSeenCounts` -> used by Notifications page (NEW badge per category)
 - `notifications.lastBellSeenCounts` -> used by dashboard bell only
 
@@ -133,7 +133,7 @@ Why this matters: if the bell overwrites the page counter, category NEW badges d
 
 ## 9) Common Failure Modes + Fixes (What We Actually Hit)
 
-1) **�Cannot connect to mobile API�**
+1) **�Cannot connect to mobile API�**
    - Cause: mobile backend not running or wrong `MOBILE_API_URL`.
    - Fix: Start mobile backend on port 5002 OR set `MOBILE_API_URL` to Render URL.
    - Use health check: `/api/admin/health/mobile-api`.
@@ -240,3 +240,29 @@ Most historical failures were **backend token + mobile connectivity**, not UI bu
 ---
 
 If anything in this document is unclear or outdated, update ALPHA.md immediately. This file is the first stop for any handover or production incident.
+
+
+# TWO WAYS TO CHANGE ADMIN CREDITIALS IN FUTURE
+
+Yes — it’s possible, and you already have a script for it.
+
+There’s a script at:
+update-admin-password.js
+
+But important:
+Right now your login does NOT read the admin from DB.
+auth.js uses ENV values (ADMIN_USERNAME / ADMIN_PASSWORD) in memory.
+So changing the DB won’t affect login unless we change auth to read from DB.
+
+Two options (your choice)
+Option A — Keep env‑based login (no code change)
+
+To change admin password, you must edit Render env (ADMIN_PASSWORD) and redeploy.
+The script won’t affect login in this mode.
+Option B — Switch admin login to DB (recommended if you want a script)
+
+Update auth to load admin from Admin or users collection.
+Then the script will work and you can update credentials anytime.
+The script usage (once auth is DB‑based):
+
+node desktop-backend/scripts/update-admin-password.js --username admin --password NewPass123 --env-dir desktop-backend

@@ -44,7 +44,7 @@ function createWindow() {
     },
     // Professional window settings
     backgroundColor: '#ffffff',
-    title: 'Embroidery Tech Management',
+    title: 'Amrod Digital Asset Tracking Management System',
     resizable: true,
     maximizable: true,
     fullscreenable: false,

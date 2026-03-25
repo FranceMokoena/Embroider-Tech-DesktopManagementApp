@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from './context/ToastContext';
 import { setAdminTokenStorage } from './utils/authStorage';
 import { ensureMobileToken } from './services/mobileTokenService';
+import { clearApiGetCache } from './services/apiClient';
 import './AdminLogin.css';
 
 const DESKTOP_API = process.env.REACT_APP_DESKTOP_API || 'http://localhost:5001';
 const heroImage = require('./assets/Amrod.jpg');
 const typingPhrases = [
-  'Precision. Integrity. Embroidery oversight with no compromises.',
+  'Precision. Integrity. Amrod oversight with no compromises.',
   'Secure access for the teams protecting vital garment assets.',
   'Documented compliance, modern delivery, and trusted outcomes.'
 ];
@@ -70,6 +71,7 @@ function AdminLogin() {
       if (!response.ok) {
         error(data.error || 'Login failed. Please check your credentials.');
       } else {
+      clearApiGetCache();
       setAdminTokenStorage(data.token, data.user.username);
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('admin-token-ready'));
@@ -95,8 +97,8 @@ function AdminLogin() {
         <div className="hero-image-wrapper">
           <img className="hero-image" src={heroImage} alt="Company embroidery illustration" />
         </div>
-        <p className="hero-tagline hero-tagline-below-image">Welcome to
- Embroideries Screen Management</p>
+        <p className="hero-tagline hero-tagline-below-image">
+ Amrod Digital Asset Tracking Management System</p>
         <div className="hero-text">
           <h2>Official Admin Access</h2>
           <p className="typing-line">
@@ -104,7 +106,7 @@ function AdminLogin() {
             <span className="typing-cursor" aria-hidden="true"></span>
           </p>
           <p className="hero-subtext">
-            We pride ourselves in being professional and offering all our clients the best products and services you could need.
+            Everything we do at Amrod is focused on creating a world-class experience and providing a seamless Total-Solution our customers can count on..
           </p>
         </div>
       </div>
@@ -157,7 +159,7 @@ function AdminLogin() {
           </form>
 
           <p className="helper-text">
-            Need access? Contact EmbroideryTech compliance to provision your user.
+            Need access? Contact Amrod compliance to provision your user.
           </p>
         </div>
       </div>

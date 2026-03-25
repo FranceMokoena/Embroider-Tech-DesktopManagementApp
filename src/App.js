@@ -16,17 +16,27 @@ import HistoryPage from './pages/History/HistoryPage';
 import AllScreensPage from './pages/AllScreens/AllScreensPage';
 import AppShell from './layout/AppShell';
 import { ToastProvider } from './context/ToastContext';
+import { clearAdminTokenStorage } from './utils/authStorage';
+import { clearApiGetCache } from './services/apiClient';
 
 const clearAdminSession = () => {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem('adminToken');
-  localStorage.removeItem('adminUsername');
+  clearAdminTokenStorage();
+  clearApiGetCache();
   sessionStorage.removeItem('adminTokenBackup');
   sessionStorage.removeItem('adminUsernameBackup');
-  sessionStorage.removeItem('adminTokenCleared');
 };
 
-clearAdminSession();
+const ensureLoginOnFirstLoad = () => {
+  if (typeof window === 'undefined') return;
+  const alreadyCleared = sessionStorage.getItem('adminTokenCleared') === '1';
+  if (!alreadyCleared) {
+    clearAdminSession();
+    sessionStorage.setItem('adminTokenCleared', '1');
+  }
+};
+
+ensureLoginOnFirstLoad();
 
 // Main App component with Router
 const RequireAuth = ({ children }) => {

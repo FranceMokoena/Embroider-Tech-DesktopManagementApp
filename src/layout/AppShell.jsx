@@ -2,11 +2,12 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import './AppShell.css';
-import { getSessions } from '../services/apiClient';
+import { clearApiGetCache, getSessions } from '../services/apiClient';
 import {
   extractSessionsFromResponse,
   buildScanRows
 } from '../utils/sessionAggregators';
+import { clearAdminTokenStorage } from '../utils/authStorage';
 
 const LAST_SEEN_KEY = 'notifications.lastSeenCounts';
 const LAST_BELL_KEY = 'notifications.lastBellSeenCounts';
@@ -94,7 +95,7 @@ export default function AppShell() {
   }, []);
 
   useEffect(() => {
-    const baseInterval = 15000;
+    const baseInterval = 60000;
     const maxInterval = 120000;
 
     const refreshNotificationCounts = async () => {
@@ -171,8 +172,8 @@ export default function AppShell() {
   }, [isDarkMode]);
 
   const handleLogout = () => {
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('adminUsername');
+    clearAdminTokenStorage();
+    clearApiGetCache();
     sessionStorage.removeItem('adminTokenBackup');
     sessionStorage.removeItem('adminUsernameBackup');
     setAdminMenuOpen(false);
@@ -207,7 +208,7 @@ export default function AppShell() {
             </button>
             <div className="app-shell__title-group">
               <p className="app-shell__eyebrow">Enterprise Operations</p>
-              <h1>Embroideries Screen Management System</h1>
+              <h1>Amrod Digital Asset Tracking Management System</h1>
             </div>
           </div>
           <div className="app-shell__actions" ref={adminActionsRef}>

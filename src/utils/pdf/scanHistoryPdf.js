@@ -5,7 +5,7 @@ const drawHeader = (pdf) => {
   pdf.rect(0, 0, 210, 30, 'F');
   pdf.setFontSize(20);
   pdf.setTextColor(255, 255, 255);
-  pdf.text('EmbroideryTech', 105, 15, { align: 'center' });
+  pdf.text('Amrod Digital Asset Tracking Management System', 105, 15, { align: 'center' });
   pdf.setFontSize(14);
   pdf.text('Scan History Report', 105, 25, { align: 'center' });
 };
@@ -15,7 +15,7 @@ const drawFooter = (pdf) => {
   pdf.rect(20, 270, 170, 25, 'F');
   pdf.setFontSize(9);
   pdf.setTextColor(255, 255, 255);
-  pdf.text('Data sourced from EmbroideryTech Mobile App', 105, 280, { align: 'center' });
+  pdf.text('Data sourced from Amrod Digital Asset Tracking Management System', 105, 280, { align: 'center' });
 };
 
 export const generateScanHistoryReport = (scans, filters = {}) => {

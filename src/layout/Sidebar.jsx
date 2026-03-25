@@ -17,7 +17,7 @@ const Sidebar = ({ collapsed, onToggle }) => (
   <aside className={`sidebar ${collapsed ? 'is-collapsed' : ''}`}>
     <div className="sidebar__logo">
       <div className="sidebar__logo-icon">ES</div>
-      {!collapsed && <div className="sidebar__logo-text">Embroidery Ops</div>}
+      {!collapsed && <div className="sidebar__logo-text">Amrod Ops</div>}
     </div>
     <nav className="sidebar__nav">
       {menuItems.map((item) => (
