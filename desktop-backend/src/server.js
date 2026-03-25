@@ -17,6 +17,10 @@ const PORT = process.env.PORT || 5001;
 const app = express();
 const isDev = process.env.NODE_ENV === 'development';
 
+// Render and similar platforms sit behind a proxy. Trust the first hop so
+// request metadata such as client IP is resolved consistently.
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet({
   crossOriginResourcePolicy: isDev ? false : { policy: 'same-origin' }
@@ -70,14 +74,14 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
-// Rate limiting (after CORS so even 429 responses include CORS headers)
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: isDev ? 10000 : (parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100),
-  message: 'Too many requests from this IP, please try to logout and login again.',
+// Limit only the unauthenticated auth endpoints. Normal authenticated dashboard
+// traffic should not hit a shared per-IP ceiling during expected usage.
+const authLimiter = rateLimit({
+  windowMs: parseInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+  max: isDev ? 10000 : (parseInt(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS) || 25),
+  message: 'Too many login attempts, please try again later.',
   skip: (req) => req.method === 'OPTIONS'
 });
-app.use(limiter);
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -92,6 +96,8 @@ app.get('/', (req, res) => {
 });
 
 // API routes
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/reports', reportsRoutes);
