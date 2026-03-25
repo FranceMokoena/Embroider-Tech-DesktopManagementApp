@@ -1,7 +1,7 @@
 {
   "name": "embroidery-desktop",
-  "version": "1.0.8",
-  "description": "EmbroideryTech Desktop Management Application",
+  "version": "1.0.9",
+  "description": "Amrod Digital Asset Tracking Management System - Desktop Application for managing and tracking digital assets.",
   "main": "src/main.js",
   "homepage": "./",
   "scripts": {
