@@ -1809,6 +1809,229 @@ function HomeDashboard() {
        alert('❌ Error generating technician PDF report. Please try again.');
      }
    };
+
+   // Generate comprehensive dashboard overview PDF report
+   const generateDashboardOverviewPDFReport = () => {
+     try {
+       console.log('Generating dashboard overview PDF...');
+       
+       // Create new PDF document
+       const pdf = new jsPDF();
+       
+       // Add header with company branding
+       pdf.setFillColor(52, 152, 219);
+       pdf.rect(0, 0, 210, 30, 'F');
+       
+       pdf.setFontSize(20);
+       pdf.setTextColor(255, 255, 255);
+       pdf.text('EmbroideryTech', 105, 15, { align: 'center' });
+       
+       pdf.setFontSize(14);
+       pdf.text('Production Overview Report', 105, 25, { align: 'center' });
+       
+       // Add generation date
+       pdf.setFontSize(10);
+       pdf.setTextColor(127, 140, 141);
+       pdf.text(`Report Generated: ${new Date().toLocaleDateString()}`, 105, 40, { align: 'center' });
+       
+       // Add separator line
+       pdf.setDrawColor(200, 200, 200);
+       pdf.line(20, 50, 190, 50);
+       
+       // Add executive summary section
+       pdf.setFontSize(16);
+       pdf.setFont('helvetica', 'bold');
+       pdf.setTextColor(44, 62, 80);
+       pdf.text('Production Summary', 20, 65);
+       
+       // Add key metrics in a grid format
+       let currentY = 75;
+       
+       // Create background for metrics grid
+       pdf.setFillColor(248, 249, 250);
+       pdf.rect(20, currentY - 5, 170, 80, 'F');
+       pdf.setDrawColor(200, 200, 200);
+       pdf.rect(20, currentY - 5, 170, 80, 'S');
+       
+       // Metric 1: Total Staff
+       pdf.setFontSize(12);
+       pdf.setFont('helvetica', 'bold');
+       pdf.setTextColor(52, 152, 219);
+       pdf.text('Total Staff', 25, currentY);
+       pdf.setFontSize(16);
+       pdf.setTextColor(44, 62, 80);
+       pdf.text(dashboardOverview.totalUsers.toString(), 25, currentY + 8);
+       
+       // Metric 2: Total Work Sessions
+       pdf.setTextColor(52, 152, 219);
+       pdf.setFontSize(12);
+       pdf.text('Work Sessions', 115, currentY);
+       pdf.setFontSize(16);
+       pdf.setTextColor(44, 62, 80);
+       pdf.text(dashboardOverview.totalSessions.toString(), 115, currentY + 8);
+       
+       // Metric 3: Total Items Processed
+       pdf.setTextColor(52, 152, 219);
+       pdf.setFontSize(12);
+       pdf.text('Items Processed', 25, currentY + 30);
+       pdf.setFontSize(16);
+       pdf.setTextColor(44, 62, 80);
+       pdf.text(dashboardOverview.totalScans.toString(), 25, currentY + 38);
+       
+       // Metric 4: Today's Production
+       pdf.setTextColor(52, 152, 219);
+       pdf.setFontSize(12);
+       pdf.text('Today\'s Production', 115, currentY + 30);
+       pdf.setFontSize(16);
+       pdf.setTextColor(44, 62, 80);
+       pdf.text(dashboardOverview.todayScans.toString(), 115, currentY + 38);
+       
+       // Metric 5: Weekly Production
+       pdf.setTextColor(52, 152, 219);
+       pdf.setFontSize(12);
+       pdf.text('Weekly Production', 25, currentY + 55);
+       pdf.setFontSize(16);
+       pdf.setTextColor(44, 62, 80);
+       pdf.text(dashboardOverview.weeklyScans.toString(), 25, currentY + 63);
+       
+       currentY += 90;
+       
+       // Add quality status breakdown section
+       pdf.setFontSize(16);
+       pdf.setFont('helvetica', 'bold');
+       pdf.setTextColor(44, 62, 80);
+       pdf.text('Quality Status Overview', 20, currentY);
+       
+       // Create background for status breakdown
+       pdf.setFillColor(248, 249, 250);
+       pdf.rect(20, currentY + 5, 170, 60, 'F');
+       pdf.setDrawColor(200, 200, 200);
+       pdf.rect(20, currentY + 5, 170, 60, 'S');
+       
+       // Quality Pass
+       pdf.setFontSize(12);
+       pdf.setFont('helvetica', 'bold');
+       pdf.setTextColor(39, 174, 96);
+       pdf.text('Quality Pass', 25, currentY + 20);
+       pdf.setFont('helvetica', 'normal');
+       pdf.setTextColor(44, 62, 80);
+       pdf.text(`${scanStats.healthy} items`, 25, currentY + 28);
+       const healthyPercentage = scanStats.totalScans > 0 ? Math.round((scanStats.healthy / scanStats.totalScans) * 100) : 0;
+       pdf.text(`${healthyPercentage}% of total`, 25, currentY + 36);
+       
+       // Needs Attention
+       pdf.setTextColor(243, 156, 18);
+       pdf.setFont('helvetica', 'bold');
+       pdf.text('Needs Attention', 85, currentY + 20);
+       pdf.setFont('helvetica', 'normal');
+       pdf.setTextColor(44, 62, 80);
+       pdf.text(`${scanStats.reparable} items`, 85, currentY + 28);
+       const reparablePercentage = scanStats.totalScans > 0 ? Math.round((scanStats.reparable / scanStats.totalScans) * 100) : 0;
+       pdf.text(`${reparablePercentage}% of total`, 85, currentY + 36);
+       
+       // Quality Fail
+       pdf.setTextColor(231, 76, 60);
+       pdf.setFont('helvetica', 'bold');
+       pdf.text('Quality Fail', 145, currentY + 20);
+       pdf.setFont('helvetica', 'normal');
+       pdf.setTextColor(44, 62, 80);
+       pdf.text(`${scanStats.beyondRepair} items`, 145, currentY + 28);
+       const beyondRepairPercentage = scanStats.totalScans > 0 ? Math.round((scanStats.beyondRepair / scanStats.totalScans) * 100) : 0;
+       pdf.text(`${beyondRepairPercentage}% of total`, 145, currentY + 36);
+       
+       currentY += 75;
+       
+       // Add department overview section
+       if (Object.keys(departmentStats).length > 0) {
+         pdf.setFontSize(16);
+         pdf.setFont('helvetica', 'bold');
+         pdf.setTextColor(44, 62, 80);
+         pdf.text('Department Overview', 20, currentY);
+         
+         // Create background for department stats
+         pdf.setFillColor(248, 249, 250);
+         pdf.rect(20, currentY + 5, 170, 40, 'F');
+         pdf.setDrawColor(200, 200, 200);
+         pdf.rect(20, currentY + 5, 170, 40, 'S');
+         
+         let deptY = currentY + 20;
+         let deptX = 25;
+         let deptCount = 0;
+         
+         for (const [dept, count] of Object.entries(departmentStats)) {
+           if (deptCount > 0 && deptCount % 2 === 0) {
+             deptY += 15;
+             deptX = 25;
+           }
+           
+           pdf.setFontSize(11);
+           pdf.setFont('helvetica', 'bold');
+           pdf.setTextColor(52, 152, 219);
+           pdf.text(`${dept}:`, deptX, deptY);
+           pdf.setFont('helvetica', 'normal');
+           pdf.setTextColor(44, 62, 80);
+           pdf.text(`${count} staff`, deptX + 40, deptY);
+           
+           deptX += 85;
+           deptCount++;
+         }
+         
+         currentY += 55;
+       }
+       
+       // Add production activity summary
+       pdf.setFontSize(16);
+       pdf.setFont('helvetica', 'bold');
+       pdf.setTextColor(44, 62, 80);
+       pdf.text('Production Activity', 20, currentY);
+       
+       // Create background for activity summary
+       pdf.setFillColor(248, 249, 250);
+       pdf.rect(20, currentY + 5, 170, 50, 'F');
+       pdf.setDrawColor(200, 200, 200);
+       pdf.rect(20, currentY + 5, 170, 50, 'S');
+       
+       pdf.setFontSize(11);
+       pdf.setFont('helvetica', 'normal');
+       pdf.setTextColor(44, 62, 80);
+       
+       pdf.text(`Active staff members: ${users.length}`, 25, currentY + 20);
+       pdf.text(`Completed work sessions: ${sessions.filter(s => s.endTime).length}`, 25, currentY + 28);
+       pdf.text(`Active work sessions: ${sessions.filter(s => !s.endTime).length}`, 25, currentY + 36);
+       pdf.text(`Quality alerts: ${generateNotifications.length}`, 25, currentY + 44);
+       
+       currentY += 65;
+       
+       // Add footer with border
+       pdf.setFillColor(44, 62, 80);
+       pdf.rect(20, 270, 170, 25, 'F');
+       
+       pdf.setFontSize(9);
+       pdf.setTextColor(255, 255, 255);
+       pdf.text('EmbroideryTech Production Management System', 105, 280, { align: 'center' });
+       pdf.text('Professional Quality Control & Production Tracking', 105, 288, { align: 'center' });
+       
+       // Save the PDF
+       const filename = `Production_Overview_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+       console.log('Saving PDF with filename:', filename);
+       
+       try {
+         pdf.save(filename);
+         alert('Production Overview Report downloaded successfully!\n\nProfessional report ready for client review');
+       } catch (saveError) {
+         console.error('Error saving PDF:', saveError);
+         // Fallback: try to save with a simpler filename
+         const fallbackFilename = `Production_Overview_Report_${Date.now()}.pdf`;
+         pdf.save(fallbackFilename);
+         alert('Production Overview Report downloaded successfully!\n\nProfessional report ready for client review');
+       }
+       
+     } catch (error) {
+       console.error('Error generating production overview PDF report:', error);
+       console.error('Error details:', error.message);
+       alert('Error generating production overview PDF report. Please try again.');
+     }
+   };
   useEffect(() => {
     // Get token from localStorage
     const authToken = localStorage.getItem('authToken');
@@ -2403,11 +2626,11 @@ function HomeDashboard() {
               <div className="section-header">
                 <h2>📊 Dashboard Overview</h2>
                 <div className="section-actions">
-                  <button className="export-btn">
+                  <button 
+                    className="export-btn"
+                    onClick={generateDashboardOverviewPDFReport}
+                  >
                     📥 Export Data
-                  </button>
-                  <button className="settings-btn">
-                    ⚙️ Settings
                   </button>
                 </div>
               </div>

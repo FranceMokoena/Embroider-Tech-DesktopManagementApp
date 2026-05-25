@@ -5,6 +5,24 @@ const isDev = require('electron-is-dev');
 
 let mainWindow;
 
+const DEFAULT_LOCAL_ASSET_CONSOLE_URL = 'http://localhost:5011/asset-console/';
+const DEFAULT_PRODUCTION_ASSET_CONSOLE_URL = 'https://embroiderytech-desktop.onrender.com/asset-console/';
+
+const getAssetConsoleUrl = () =>
+  process.env.DESKTOP_ASSET_CONSOLE_URL ||
+  process.env.REACT_APP_DESKTOP_ASSET_CONSOLE_URL ||
+  (isDev ? DEFAULT_LOCAL_ASSET_CONSOLE_URL : DEFAULT_PRODUCTION_ASSET_CONSOLE_URL);
+
+const isAllowedAssetConsoleNavigation = navigationUrl => {
+  try {
+    const allowedOrigin = new URL(getAssetConsoleUrl()).origin;
+    const parsedUrl = new URL(navigationUrl);
+    return parsedUrl.origin === allowedOrigin;
+  } catch {
+    return false;
+  }
+};
+
 // Auto-updater configuration
 autoUpdater.autoDownload = false; // We'll handle download manually to show progress
 autoUpdater.autoInstallOnAppQuit = true;
@@ -36,7 +54,7 @@ function createWindow() {
     },
     // Professional window settings
     backgroundColor: '#ffffff',
-    title: 'Embroidery Tech Management',
+    title: 'EmbroideryTech Management System',
     resizable: true,
     maximizable: true,
     fullscreenable: false,
@@ -57,14 +75,8 @@ function createWindow() {
     }
   });
 
-  // Load React app URL in dev, or the build index.html in production
-  if (isDev) {
-    mainWindow.loadURL('http://localhost:3000');
-    // Completely disable dev tools even in development for testing
-    // mainWindow.webContents.openDevTools();
-  } else {
-    mainWindow.loadFile(path.join(__dirname, '../build/index.html'));
-  }
+  // The RFID asset console is the canonical desktop UI.
+  mainWindow.loadURL(getAssetConsoleUrl());
 
   // Remove menu bar completely for cleaner look
   Menu.setApplicationMenu(null);
@@ -118,12 +130,8 @@ function createWindow() {
   mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
     const parsedUrl = new URL(navigationUrl);
     
-    if (isDev && parsedUrl.origin === 'http://localhost:3000') {
-      return; // Allow localhost in development
-    }
-    
-    if (!isDev && parsedUrl.protocol === 'file:') {
-      return; // Allow file protocol in production
+    if (isAllowedAssetConsoleNavigation(navigationUrl)) {
+      return;
     }
     
     event.preventDefault();
