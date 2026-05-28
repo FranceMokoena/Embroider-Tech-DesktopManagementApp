@@ -26,7 +26,7 @@ app.use(rateLimit({
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5001'];
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
@@ -45,6 +45,11 @@ app.get('/', (req, res) => {
     version: '1.0.0'
   });
 });
+
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/assets', assetsRoutes);
+app.use('/api/v1/rfid', rfidRoutes);
+app.use('/api/v1/features', featuresRoutes);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/assets', assetsRoutes);

@@ -6,6 +6,7 @@ export function normalizeSection(section) {
     name: section.name || null,
     code: section.code || null,
     description: section.description || null,
+    active: section.active !== false,
     createdAt: section.createdAt || null,
     updatedAt: section.updatedAt || null,
     raw: section

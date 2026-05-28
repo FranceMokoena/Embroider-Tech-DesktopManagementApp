@@ -1,4 +1,4 @@
-const { app, BrowserWindow, globalShortcut, Menu, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, globalShortcut, Menu, ipcMain, dialog, safeStorage } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
@@ -6,6 +6,38 @@ const fs = require('fs');
 let mainWindow;
 let updateAvailable = false;
 let updateDownloaded = false;
+const tokenStoreFile = () => path.join(app.getPath('userData'), 'auth-tokens.bin');
+
+function readStoredTokens() {
+  try {
+    const file = tokenStoreFile();
+    if (!fs.existsSync(file)) return null;
+    const encrypted = fs.readFileSync(file);
+    const decrypted = safeStorage.decryptString(encrypted);
+    return JSON.parse(decrypted);
+  } catch (error) {
+    console.error('Secure token read failed:', error.message);
+    return null;
+  }
+}
+
+function writeStoredTokens(tokens) {
+  if (!safeStorage.isEncryptionAvailable()) {
+    throw new Error('Electron secure storage encryption is unavailable on this device.');
+  }
+
+  const encrypted = safeStorage.encryptString(JSON.stringify(tokens || {}));
+  fs.writeFileSync(tokenStoreFile(), encrypted, { mode: 0o600 });
+}
+
+function clearStoredTokens() {
+  try {
+    const file = tokenStoreFile();
+    if (fs.existsSync(file)) fs.unlinkSync(file);
+  } catch (error) {
+    console.error('Secure token clear failed:', error.message);
+  }
+}
 
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
@@ -37,6 +69,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
       enableRemoteModule: false,
       webSecurity: true,
       devTools: false,
@@ -142,6 +175,16 @@ ipcMain.handle('download-update', () => {
 });
 ipcMain.handle('install-update', () => {
   if (updateDownloaded) autoUpdater.quitAndInstall();
+});
+
+ipcMain.handle('auth:get-tokens', () => readStoredTokens());
+ipcMain.handle('auth:set-tokens', (event, tokens) => {
+  writeStoredTokens(tokens);
+  return true;
+});
+ipcMain.handle('auth:clear-tokens', () => {
+  clearStoredTokens();
+  return true;
 });
 
 const gotTheLock = app.requestSingleInstanceLock();

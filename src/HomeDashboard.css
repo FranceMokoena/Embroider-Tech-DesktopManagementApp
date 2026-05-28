@@ -93,6 +93,43 @@
   font-weight: 700;
 }
 
+.management-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  align-items: end;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.management-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.management-form input,
+.management-form select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #b9c1cf;
+  border-radius: 4px;
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.checkbox-field {
+  flex-direction: row !important;
+  align-items: center;
+  min-height: 38px;
+}
+
+.checkbox-field input {
+  width: auto;
+}
+
 .verification-form select,
 .verification-form textarea {
   width: 100%;
@@ -209,6 +246,7 @@
 
 @media (max-width: 900px) {
   .metric-grid,
+  .management-form,
   .verification-form {
     grid-template-columns: 1fr;
   }

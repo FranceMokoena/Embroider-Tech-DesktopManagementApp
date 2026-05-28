@@ -88,7 +88,6 @@ export async function verifyRoom(req, res) {
       {
         $set: {
           verificationStatus: result.status,
-          status: result.status,
           updatedAt: verifiedAt
         },
         $push: {

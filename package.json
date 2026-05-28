@@ -38,6 +38,7 @@
     "files": [
       "build/**/*",
       "src/main.js",
+      "src/preload.js",
       "package.json"
     ],
     "extraResources": [

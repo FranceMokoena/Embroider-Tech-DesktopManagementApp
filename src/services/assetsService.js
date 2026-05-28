@@ -1,15 +1,14 @@
 import apiClient from './apiClient';
 
 const assetsService = {
-  list: async (params = {}) => apiClient.get('/api/assets', params),
-  get: async (id) => apiClient.get(`/api/assets/${id}`),
-  metrics: async () => apiClient.get('/api/assets/metrics'),
-  sections: async () => apiClient.get('/api/assets/sections'),
-  verificationHistory: async (params = {}) => apiClient.get('/api/assets/verification-history', params),
-  transfers: async (params = {}) => apiClient.get('/api/assets/transfers', params),
-  transfer: async (id, body) => apiClient.post(`/api/assets/${id}/transfer`, body),
-  delete: async (id) => apiClient.del(`/api/assets/${id}`),
-  update: async (id, body) => apiClient.put(`/api/assets/${id}`, body)
+  list: async (params = {}) => apiClient.get('/rfid/assets', params),
+  create: async (body) => apiClient.post('/rfid/assets', body),
+  get: async (id) => apiClient.get(`/rfid/assets/${id}`),
+  metrics: async () => apiClient.get('/rfid/assets/metrics'),
+  verificationHistory: async (params = {}) => apiClient.get('/rfid/scans', params),
+  transfer: async (id, body) => apiClient.post('/transfers', { ...body, assetId: id }),
+  delete: async (id) => apiClient.del(`/rfid/assets/${id}`),
+  update: async (id, body) => apiClient.patch(`/rfid/assets/${id}`, body)
 };
 
 export default assetsService;

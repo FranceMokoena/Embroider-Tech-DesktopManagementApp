@@ -1,10 +1,14 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import assetsService from '../services/assetsService';
 import rfidService from '../services/rfidService';
+import sectionsService from '../services/sectionsService';
+import techniciansService from '../services/techniciansService';
+import transfersService from '../services/transfersService';
 import AssetModel from '../models/AssetModel';
 import SectionModel from '../models/SectionModel';
 import VerificationModel from '../models/VerificationModel';
 import RFIDTagModel from '../models/RFIDTagModel';
+import TechnicianModel from '../models/TechnicianModel';
 
 const AssetContext = createContext(null);
 
@@ -13,6 +17,7 @@ export const useAssets = () => useContext(AssetContext);
 export function AssetProvider({ children }) {
   const [assets, setAssets] = useState([]);
   const [sections, setSections] = useState([]);
+  const [technicians, setTechnicians] = useState([]);
   const [verificationResults, setVerificationResults] = useState([]);
   const [verificationHistory, setVerificationHistory] = useState([]);
   const [rfidLookup, setRfidLookup] = useState(null);
@@ -69,7 +74,7 @@ export function AssetProvider({ children }) {
   }, []);
 
   const loadSections = useCallback(async () => {
-    const res = await assetsService.sections();
+    const res = await sectionsService.list();
     const mapped = extractRecords(res).map(s => SectionModel.normalizeSection(s)).filter(Boolean);
     setSections(mapped);
     return mapped;
@@ -83,9 +88,16 @@ export function AssetProvider({ children }) {
   }, []);
 
   const loadTransfers = useCallback(async (params = {}) => {
-    const res = await assetsService.transfers(params);
+    const res = await transfersService.list(params);
     const mapped = extractRecords(res);
     setTransfers(mapped);
+    return mapped;
+  }, []);
+
+  const loadTechnicians = useCallback(async (params = {}) => {
+    const res = await techniciansService.list(params);
+    const mapped = extractRecords(res).map(t => TechnicianModel.normalizeTechnician(t)).filter(Boolean);
+    setTechnicians(mapped);
     return mapped;
   }, []);
 
@@ -109,8 +121,9 @@ export function AssetProvider({ children }) {
     ]);
     calculateMetrics(assetRecords, sectionRecords, transferRecords);
     loadVerificationHistory().catch(() => []);
+    loadTechnicians().catch(() => []);
     loadMetrics().catch(() => null);
-  }, [calculateMetrics, loadAssets, loadMetrics, loadSections, loadTransfers, loadVerificationHistory]);
+  }, [calculateMetrics, loadAssets, loadMetrics, loadSections, loadTechnicians, loadTransfers, loadVerificationHistory]);
 
   const verifyRoom = useCallback(async (body) => {
     setLoading(true);
@@ -163,11 +176,46 @@ export function AssetProvider({ children }) {
     return res;
   }, [refresh]);
 
+  const createSection = useCallback(async (body) => {
+    const res = await sectionsService.create(body);
+    await loadSections();
+    return res;
+  }, [loadSections]);
+
+  const updateSection = useCallback(async (id, body) => {
+    const res = await sectionsService.update(id, body);
+    await loadSections();
+    return res;
+  }, [loadSections]);
+
+  const deleteSection = useCallback(async (id) => {
+    await sectionsService.delete(id);
+    setSections(prev => prev.filter(section => section._id !== id));
+  }, []);
+
+  const createTechnician = useCallback(async (body) => {
+    const res = await techniciansService.create(body);
+    await loadTechnicians();
+    return res;
+  }, [loadTechnicians]);
+
+  const updateTechnician = useCallback(async (id, body) => {
+    const res = await techniciansService.update(id, body);
+    await loadTechnicians();
+    return res;
+  }, [loadTechnicians]);
+
+  const deleteTechnician = useCallback(async (id) => {
+    await techniciansService.delete(id);
+    setTechnicians(prev => prev.filter(technician => technician._id !== id));
+  }, []);
+
   useEffect(() => { refresh(); }, [refresh]);
 
   const value = {
     assets,
     sections,
+    technicians,
     verificationResults,
     verificationHistory,
     rfidLookup,
@@ -177,6 +225,7 @@ export function AssetProvider({ children }) {
     error,
     loadAssets,
     loadSections,
+    loadTechnicians,
     loadVerificationHistory,
     loadTransfers,
     loadMetrics,
@@ -185,7 +234,13 @@ export function AssetProvider({ children }) {
     lookupEpc,
     deleteAsset,
     updateAsset,
-    transferAsset
+    transferAsset,
+    createSection,
+    updateSection,
+    deleteSection,
+    createTechnician,
+    updateTechnician,
+    deleteTechnician
   };
 
   return <AssetContext.Provider value={value}>{children}</AssetContext.Provider>;

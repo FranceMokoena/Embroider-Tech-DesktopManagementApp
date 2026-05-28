@@ -10,9 +10,13 @@ function normalizeAsset(asset) {
     assetNumber: asset.assetNumber || null,
     name: asset.name || null,
     epc: asset.epc || null,
-    status: asset.status || asset.verificationStatus || null,
-    verificationStatus: asset.verificationStatus || asset.status || null,
-    currentSection: asset.currentSection || null,
+    assetStatus: asset.assetStatus || asset.conditionStatus || asset.status || null,
+    status: asset.assetStatus || asset.conditionStatus || asset.status || null,
+    verificationStatus: asset.verificationStatus || null,
+    currentSection: asset.currentSection || asset.section || null,
+    location: asset.location || asset.currentSection || asset.section || null,
+    scanHistory: Array.isArray(asset.scanHistory) ? asset.scanHistory : [],
+    transferLogs: Array.isArray(asset.transferLogs) ? asset.transferLogs : [],
     verificationHistory: Array.isArray(asset.verificationHistory) ? asset.verificationHistory : [],
     department: asset.department || null,
     assignedTo: asset.assignedTo || null,
@@ -58,7 +62,7 @@ export async function updateAsset(req, res) {
     return res.status(400).json({ error: 'Invalid asset id' });
   }
 
-  const allowed = ['assetNumber', 'name', 'epc', 'status', 'verificationStatus', 'currentSection', 'department', 'assignedTo'];
+  const allowed = ['assetNumber', 'name', 'epc', 'assetStatus', 'status', 'verificationStatus', 'currentSection', 'location', 'department', 'assignedTo'];
   const update = allowed.reduce((payload, key) => {
     if (req.body[key] !== undefined) payload[key] = req.body[key];
     return payload;
