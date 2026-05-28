@@ -11,34 +11,20 @@ class DatabaseService {
   }
 
   async connect() {
-    try {
-      // Use the correct connection string and database name from the guide
-      const uri = process.env.MONGO_URI || 'mongodb+srv://France:FranceMan99@screenscannertechdetail.ac4f8mr.mongodb.net/?retryWrites=true&w=majority&appName=ScreenScannerTechDetails';
-      const dbName = 'test'; // The data is stored in the 'test' database, not ScreenScannerTechDetails
+    const uri = process.env.MONGO_URI;
+    const dbName = process.env.MONGO_DB_NAME || 'test';
 
-      console.log('🔍 Checking environment variables...');
-      console.log('URI exists:', !!uri);
-      console.log('DB Name:', dbName);
-
-      if (!uri) {
-        throw new Error('Database connection configuration missing');
-      }
-
-      console.log('🔌 Connecting to mobile app database...');
-
-      this.client = new MongoClient(uri);
-      await this.client.connect();
-      
-      this.db = this.client.db(dbName);
-      this.isConnected = true;
-
-      console.log('✅ Successfully connected to mobile app database');
-      console.log('   Database name:', dbName);
-      return this.db;
-    } catch (error) {
-      console.error('❌ Database connection failed:', error.message);
-      throw error;
+    if (!uri) {
+      throw new Error('Database connection configuration missing');
     }
+
+    this.client = new MongoClient(uri);
+    await this.client.connect();
+    this.db = this.client.db(dbName);
+    this.isConnected = true;
+
+    console.log(`Connected to RFID ERP database: ${dbName}`);
+    return this.db;
   }
 
   async getDb() {
@@ -67,7 +53,7 @@ class DatabaseService {
     if (this.client) {
       await this.client.close();
       this.isConnected = false;
-      console.log('🔌 Database connection closed');
+      console.log('Database connection closed');
     }
   }
 }

@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from './context/ToastContext';
+import authService from './services/authService';
 import './AdminLogin.css';
-
-// Use environment variable or fallback to local URL
-const DESKTOP_API = process.env.REACT_APP_DESKTOP_API || 'http://localhost:5001';
 
 function AdminLogin() {
   const navigate = useNavigate();
@@ -21,28 +19,17 @@ function AdminLogin() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${DESKTOP_API}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
+      const data = await authService.login({ username, password });
+      localStorage.setItem('authToken', data.token);
+      localStorage.setItem('adminUsername', data.user.username);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        error(data.error || 'Login failed. Please check your credentials.');
-      } else {
-        localStorage.setItem('authToken', data.token);
-        localStorage.setItem('adminUsername', data.user.username);
-
-        success('Login successful! Redirecting to dashboard...', 2000);
-        setTimeout(() => {
-          navigate('/home-dashboard');
-        }, 1500);
-      }
+      success('Login successful. Redirecting to dashboard...', 2000);
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1500);
     } catch (err) {
       console.error(err);
-      error('Connection error. Please check your internet connection and try again.');
+      error(err.message || 'Connection error. Please check your internet connection and try again.');
     } finally {
       setLoading(false);
     }

@@ -5,40 +5,25 @@ import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 
-// Import routes
 import authRoutes from './routes/auth.js';
-import adminRoutes from './routes/admin.js';
-import reportsRoutes from './routes/reports.js';
-import messagingRoutes from './routes/messaging.js';
-import dashboardRoutes from './routes/dashboard.js';
-import databaseRoutes from './routes/database.js';
+import assetsRoutes from './routes/assets.js';
+import rfidRoutes from './routes/rfid.js';
+import featuresRoutes from './routes/features.js';
 
 dotenv.config();
 
 const PORT = process.env.PORT || 5001;
 const app = express();
 
-// Security middleware
 app.use(helmet());
 app.use(compression());
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limit each IP to 100 requests per windowMs
+app.use(rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
   message: 'Too many requests from this IP, please try again later.'
-});
-app.use(limiter);
+}));
 
-// CORS configuration
-const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://localhost:3002',
-  'http://localhost:3003',
-  'http://localhost:19006'
-];
-
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5001'];
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
@@ -53,38 +38,31 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Health check endpoint
 app.get('/', (req, res) => {
-  res.json({ 
-    status: '✅ Desktop Admin API is running', 
+  res.json({
+    status: 'RFID ERP API is running',
     timestamp: new Date().toISOString(),
     version: '1.0.0'
   });
 });
 
-// API routes
 app.use('/api/auth', authRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/reports', reportsRoutes);
-app.use('/api/messaging', messagingRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/database', databaseRoutes);
+app.use('/api/assets', assetsRoutes);
+app.use('/api/rfid', rfidRoutes);
+app.use('/api/features', featuresRoutes);
 
-// Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('❌ Server error:', err);
-  res.status(500).json({ 
+  console.error('Server error:', err);
+  res.status(500).json({
     error: 'Internal server error',
     message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
   });
 });
 
-// 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Desktop Admin API running on http://0.0.0.0:${PORT}`);
-  console.log(`📊 Admin Dashboard: http://localhost:${PORT}`);
+  console.log(`RFID ERP API running on http://0.0.0.0:${PORT}`);
 });

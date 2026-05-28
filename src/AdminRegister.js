@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from './context/ToastContext';
+import authService from './services/authService';
 import './AdminRegister.css';
-
-const DESKTOP_API = process.env.REACT_APP_DESKTOP_API || 'http://localhost:5001';
 
 function AdminRegister() {
   const navigate = useNavigate();
@@ -32,32 +31,21 @@ function AdminRegister() {
 
     setLoading(true);
     try {
-      const response = await fetch(`${DESKTOP_API}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          surname: formData.surname,
-          username: formData.username,
-          email: formData.email,
-          department: formData.department,
-          password: formData.password
-        })
+      await authService.register({
+        name: formData.name,
+        surname: formData.surname,
+        username: formData.username,
+        email: formData.email,
+        department: formData.department,
+        password: formData.password
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        error(data.error || 'Registration failed. Please try again.');
-      } else {
-        success('Registration successful! Redirecting to login...', 2000);
-        setTimeout(() => {
-          navigate('/admin-login');
-        }, 1500);
-      }
+      success('Registration successful. Redirecting to login...', 2000);
+      setTimeout(() => {
+        navigate('/admin-login');
+      }, 1500);
     } catch (err) {
       console.error(err);
-      error('Connection error. Please check your internet connection and try again.');
+      error(err.message || 'Connection error. Please check your internet connection and try again.');
     } finally {
       setLoading(false);
     }
