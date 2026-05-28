@@ -1,11 +1,11 @@
 const { app, BrowserWindow, globalShortcut, Menu, ipcMain, dialog, safeStorage } = require('electron');
-const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
 
 let mainWindow;
 let updateAvailable = false;
 let updateDownloaded = false;
+let autoUpdater;
 const tokenStoreFile = () => path.join(app.getPath('userData'), 'auth-tokens.bin');
 
 function readStoredTokens() {
@@ -39,8 +39,21 @@ function clearStoredTokens() {
   }
 }
 
-autoUpdater.autoDownload = false;
-autoUpdater.autoInstallOnAppQuit = true;
+function getAutoUpdater() {
+  if (!autoUpdater) {
+    try {
+      autoUpdater = require('electron-updater').autoUpdater;
+      autoUpdater.autoDownload = false;
+      autoUpdater.autoInstallOnAppQuit = true;
+      registerAutoUpdaterEvents();
+    } catch (error) {
+      console.error('Auto updater unavailable:', error.message);
+      return null;
+    }
+  }
+
+  return autoUpdater;
+}
 
 function resolveLocalIndex() {
   const candidates = [
@@ -83,7 +96,7 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
     mainWindow.focus();
-    autoUpdater.checkForUpdates().catch(error => {
+    getAutoUpdater()?.checkForUpdates().catch(error => {
       console.error('Update check failed:', error.message);
     });
   });
@@ -119,62 +132,64 @@ function createWindow() {
   });
 }
 
-autoUpdater.on('update-available', info => {
-  updateAvailable = true;
-  if (mainWindow) {
-    mainWindow.webContents.send('update-status', {
-      status: 'available',
-      message: 'Update available',
-      version: info.version,
-      releaseNotes: info.releaseNotes
-    });
-  }
-});
+function registerAutoUpdaterEvents() {
+  autoUpdater.on('update-available', info => {
+    updateAvailable = true;
+    if (mainWindow) {
+      mainWindow.webContents.send('update-status', {
+        status: 'available',
+        message: 'Update available',
+        version: info.version,
+        releaseNotes: info.releaseNotes
+      });
+    }
+  });
 
-autoUpdater.on('update-not-available', () => {
-  if (mainWindow) {
-    mainWindow.webContents.send('update-status', { status: 'not-available', message: 'No updates available' });
-  }
-});
+  autoUpdater.on('update-not-available', () => {
+    if (mainWindow) {
+      mainWindow.webContents.send('update-status', { status: 'not-available', message: 'No updates available' });
+    }
+  });
 
-autoUpdater.on('download-progress', progress => {
-  if (mainWindow) {
-    mainWindow.webContents.send('update-progress', {
-      speed: progress.bytesPerSecond,
-      percent: progress.percent,
-      transferred: progress.transferred,
-      total: progress.total
-    });
-  }
-});
+  autoUpdater.on('download-progress', progress => {
+    if (mainWindow) {
+      mainWindow.webContents.send('update-progress', {
+        speed: progress.bytesPerSecond,
+        percent: progress.percent,
+        transferred: progress.transferred,
+        total: progress.total
+      });
+    }
+  });
 
-autoUpdater.on('update-downloaded', info => {
-  updateDownloaded = true;
-  if (mainWindow) {
-    mainWindow.webContents.send('update-status', {
-      status: 'downloaded',
-      message: 'Update downloaded',
-      version: info.version
-    });
-  }
-});
+  autoUpdater.on('update-downloaded', info => {
+    updateDownloaded = true;
+    if (mainWindow) {
+      mainWindow.webContents.send('update-status', {
+        status: 'downloaded',
+        message: 'Update downloaded',
+        version: info.version
+      });
+    }
+  });
 
-autoUpdater.on('error', error => {
-  if (mainWindow) {
-    mainWindow.webContents.send('update-status', {
-      status: 'error',
-      message: error.message
-    });
-  }
-});
+  autoUpdater.on('error', error => {
+    if (mainWindow) {
+      mainWindow.webContents.send('update-status', {
+        status: 'error',
+        message: error.message
+      });
+    }
+  });
+}
 
-ipcMain.handle('check-for-updates', () => autoUpdater.checkForUpdates());
+ipcMain.handle('check-for-updates', () => getAutoUpdater()?.checkForUpdates() || null);
 ipcMain.handle('download-update', () => {
-  if (updateAvailable) return autoUpdater.downloadUpdate();
+  if (updateAvailable) return getAutoUpdater()?.downloadUpdate() || null;
   return null;
 });
 ipcMain.handle('install-update', () => {
-  if (updateDownloaded) autoUpdater.quitAndInstall();
+  if (updateDownloaded) getAutoUpdater()?.quitAndInstall();
 });
 
 ipcMain.handle('auth:get-tokens', () => readStoredTokens());

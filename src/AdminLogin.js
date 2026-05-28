@@ -5,9 +5,9 @@ import authService from './services/authService';
 import './AdminLogin.css';
 
 const typingPhrases = [
-  'Documented compliance,',
-  'modern delivery,',
-  'and trusted oversight'
+  'Precision. Integrity. Amrod oversight with no compromise.',
+  'RFID visibility for every controlled asset.',
+  'Trusted records for accountable operations.'
 ];
 
 function AdminLogin() {
@@ -74,30 +74,23 @@ function AdminLogin() {
       <section className="login-brand-panel" aria-label="RFID ERP platform identity">
         <div className="brand-content">
           <div className="brand-logo-lockup">
-            <img src={`${process.env.PUBLIC_URL || ''}/logo256.png`} alt="EmbroideryTech" />
-            <div>
-              <span>EmbroideryTech</span>
-              <strong>RFID Asset ERP</strong>
+            <div className="amrod-logo-card">
+              <img src={`${process.env.PUBLIC_URL || ''}/AMROD-LOGO.png`} alt="AMROD" />
             </div>
           </div>
 
           <div className="brand-copy">
-            <p className="brand-kicker">Government Registry Platform</p>
+            <p className="brand-kicker">AMROD DIGITAL ASSET TRACKING MANAGEMENT SYSTEM</p>
             <h1>Official Admin Access</h1>
             <div className="typing-line" aria-live="polite">
               <span>{typedText}</span>
               <i aria-hidden="true" />
             </div>
             <p className="brand-description">
-              Secure administrative access for RFID asset registration, section control,
-              transfer governance, audit verification, and centralized operational oversight.
+              Everything we do at Amrod is focused on creating a world-class
+              experience and providing a seamless Total-Solution our customers
+              can count on..
             </p>
-          </div>
-
-          <div className="brand-assurance">
-            <span>Centralized RFID identity</span>
-            <span>Audit-ready asset movement</span>
-            <span>Encrypted desktop sessions</span>
           </div>
         </div>
       </section>
@@ -107,7 +100,6 @@ function AdminLogin() {
           <div className="login-card-header">
             <span className="access-label">Priority Access</span>
             <h2>Administrative Login</h2>
-            <p>Authenticate to manage the national RFID asset registry console.</p>
           </div>
 
           <form onSubmit={handleLogin} className="login-form">
@@ -116,7 +108,7 @@ function AdminLogin() {
               <input
                 type="text"
                 autoComplete="username"
-                placeholder="Enter admin username"
+                placeholder="Username"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
                 required
@@ -129,7 +121,7 @@ function AdminLogin() {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
-                  placeholder="Enter secure password"
+                  placeholder="Password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   required
@@ -151,7 +143,7 @@ function AdminLogin() {
           </form>
 
           <div className="login-compliance-note">
-            Need access? Contact system compliance administrator.
+            Need access? Contact Amrod compliance to provision your user.
           </div>
         </div>
       </section>
