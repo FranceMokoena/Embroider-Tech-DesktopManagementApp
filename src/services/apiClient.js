@@ -1,10 +1,10 @@
 import { clearStoredAuth, getStoredAuth, setStoredAuth } from './authStorage';
 
 const RAW_API_BASE =
-  process.env.REACT_APP_API_BASE ||
-  process.env.REACT_APP_PRODUCTION_BACKEND_URL ||
   process.env.REACT_APP_DESKTOP_API ||
-  'https://embroider-scann-app.onrender.com';
+  process.env.REACT_APP_PRODUCTION_BACKEND_URL ||
+  process.env.REACT_APP_API_BASE ||
+  'https://embroider-tech-desktopmanagementapp.onrender.com';
 
 const API_VERSION = process.env.REACT_APP_API_VERSION || '/api/v1';
 

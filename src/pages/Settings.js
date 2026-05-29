@@ -1,7 +1,7 @@
 import React from 'react';
 
 const settings = [
-  ['API contract', '/api/v1/rfid/assets, /api/v1/sections, /api/v1/technicians, /api/v1/transfers', 'Enforced'],
+  ['API contract', '/api/v1/assets, /api/v1/assets/sections, /api/v1/assets/transfers', 'Enforced'],
   ['Desktop shell', 'Local React build loaded through Electron loadFile', 'Enforced'],
   ['RFID identity', 'Asset.epc and Asset.currentSection', 'Enforced'],
   ['Legacy guard', 'Repository contamination check before build', 'Enforced']

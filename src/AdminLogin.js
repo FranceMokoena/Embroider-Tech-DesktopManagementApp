@@ -1,3 +1,5 @@
+// AdminLogin.jsx
+
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from './context/ToastContext';
@@ -13,42 +15,45 @@ const typingPhrases = [
 function AdminLogin() {
   const navigate = useNavigate();
   const { success, error } = useToast();
+
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
   const [phraseIndex, setPhraseIndex] = useState(0);
   const [typedText, setTypedText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const activePhrase = useMemo(() => typingPhrases[phraseIndex], [phraseIndex]);
+  const activePhrase = useMemo(
+    () => typingPhrases[phraseIndex],
+    [phraseIndex]
+  );
 
   useEffect(() => {
-    const typeDelay = isDeleting ? 34 : 58;
-    const pauseDelay = typedText === activePhrase && !isDeleting ? 1500 : typeDelay;
-    const nextDelay = typedText === '' && isDeleting ? 360 : pauseDelay;
+    const speed = isDeleting ? 35 : 60;
 
     const timer = setTimeout(() => {
       if (!isDeleting && typedText === activePhrase) {
-        setIsDeleting(true);
+        setTimeout(() => setIsDeleting(true), 1200);
         return;
       }
 
       if (isDeleting && typedText === '') {
         setIsDeleting(false);
-        setPhraseIndex(index => (index + 1) % typingPhrases.length);
+        setPhraseIndex(prev => (prev + 1) % typingPhrases.length);
         return;
       }
 
       setTypedText(current =>
         isDeleting
-          ? activePhrase.slice(0, Math.max(current.length - 1, 0))
+          ? activePhrase.slice(0, current.length - 1)
           : activePhrase.slice(0, current.length + 1)
       );
-    }, nextDelay);
+    }, speed);
 
     return () => clearTimeout(timer);
-  }, [activePhrase, isDeleting, typedText]);
+  }, [typedText, isDeleting, activePhrase]);
 
   const handleLogin = async e => {
     e.preventDefault();
@@ -57,97 +62,109 @@ function AdminLogin() {
     try {
       await authService.login({ username, password });
 
-      success('Login successful. Redirecting to dashboard...', 2000);
+      success('Login successful');
+
       setTimeout(() => {
         navigate('/dashboard');
-      }, 900);
+      }, 800);
     } catch (err) {
       console.error(err);
-      error(err.message || 'Connection error. Please check your internet connection and try again.');
+
+      error(
+        err.message ||
+          'Unable to login. Please check your connection and try again.'
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="AdminApp">
-      <section className="login-brand-panel" aria-label="RFID ERP platform identity">
+    <div className="admin-login-page">
+      {/* LEFT BRAND PANEL */}
+      <div className="brand-panel">
+        <div className="brand-overlay"></div>
+
         <div className="brand-content">
-          <div className="brand-logo-lockup">
-            <div className="amrod-logo-card">
-              <img src={`${process.env.PUBLIC_URL || ''}/AMROD-LOGO.png`} alt="AMROD" />
-            </div>
+          <div className="logo-card">
+            <img
+              src={`${process.env.PUBLIC_URL || ''}/AMROD-LOGO.png`}
+              alt="AMROD"
+            />
           </div>
 
-          <div className="brand-copy">
-            <p className="brand-kicker">AMROD DIGITAL ASSET TRACKING MANAGEMENT SYSTEM</p>
+          <div className="brand-text">
+            <span className="brand-tag">
+              AMROD DIGITAL ASSET TRACKING MANAGEMENT SYSTEM
+            </span>
+
             <h1>Official Admin Access</h1>
-            <div className="typing-line" aria-live="polite">
+
+            <div className="typing-container">
               <span>{typedText}</span>
-              <i aria-hidden="true" />
+              <div className="cursor"></div>
             </div>
-            <p className="brand-description">
-              Everything we do at Amrod is focused on creating a world-class
-              experience and providing a seamless Total-Solution our customers
-              can count on..
+
+            <p>
+              Secure RFID asset visibility, accountability, and centralized
+              enterprise asset management for modern operations.
             </p>
           </div>
         </div>
-      </section>
+      </div>
 
-      <section className="login-auth-panel" aria-label="Administrative login">
+      {/* RIGHT LOGIN PANEL */}
+      <div className="form-panel">
         <div className="login-card">
-          <div className="login-card-header">
-            <span className="access-label">Priority Access</span>
+          <div className="card-header">
+            <span className="small-label">PRIORITY ACCESS</span>
             <h2>Administrative Login</h2>
           </div>
 
           <form onSubmit={handleLogin} className="login-form">
-            <label className="field-group">
-              <span>Username</span>
+            <input
+              type="text"
+              placeholder="Username"
+              autoComplete="username"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              required
+            />
+
+            <div className="password-box">
               <input
-                type="text"
-                autoComplete="username"
-                placeholder="Username"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Password"
+                autoComplete="current-password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
                 required
               />
-            </label>
 
-            <label className="field-group">
-              <span>Password</span>
-              <div className="password-wrapper">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                />
-                <button
-                  className="toggle-password"
-                  type="button"
-                  onClick={() => setShowPassword(prev => !prev)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? 'HIDE' : 'SHOW'}
-                </button>
-              </div>
-            </label>
+              <button
+                type="button"
+                className="show-btn"
+                onClick={() => setShowPassword(prev => !prev)}
+              >
+                {showPassword ? 'HIDE' : 'SHOW'}
+              </button>
+            </div>
 
-            <button className="secure-login-button" type="submit" disabled={loading}>
-              {loading ? 'Authenticating...' : 'Secure Login'}
+            <button
+              type="submit"
+              className="login-btn"
+              disabled={loading}
+            >
+              {loading ? 'AUTHENTICATING...' : 'SECURE LOGIN'}
             </button>
           </form>
 
-          <div className="login-compliance-note">
-            Need access? Contact Amrod compliance to provision your user.
-          </div>
+          <p className="footer-note">
+            Need access? Contact Amrod compliance to provision your account.
+          </p>
         </div>
-      </section>
-    </main>
+      </div>
+    </div>
   );
 }
 
