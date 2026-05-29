@@ -5,6 +5,7 @@ import {
   assetMetrics,
   getAsset,
   listAssets,
+  listSectionOptions,
   listSections,
   listTransfers,
   listVerificationHistory,
@@ -18,8 +19,15 @@ router.use(requireAuth);
 
 router.get('/', listAssets);
 router.get('/metrics', assetMetrics);
+router.get('/summary', assetMetrics);
+router.get('/dashboard', assetMetrics);
+router.get('/statistics', assetMetrics);
+router.get('/sections/options', listSectionOptions);
 router.get('/sections', listSections);
 router.get('/transfers', listTransfers);
+router.get('/history', listVerificationHistory);
+router.get('/verifications', listVerificationHistory);
+router.get('/rfid-activity', listVerificationHistory);
 router.get('/verification-history', listVerificationHistory);
 router.get('/:id', getAsset);
 router.put('/:id', updateAsset);

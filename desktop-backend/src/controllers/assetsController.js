@@ -5,16 +5,24 @@ const toObjectId = id => ObjectId.isValid(id) ? new ObjectId(id) : null;
 
 function normalizeAsset(asset) {
   if (!asset) return null;
+  const id = asset._id?.toString?.() || asset._id || asset.id || null;
+  const assetName = asset.assetName || asset.name || null;
+  const currentSection = asset.currentSection || asset.section || asset.location || null;
+
   return {
-    _id: asset._id?.toString?.() || asset._id || null,
+    _id: id,
+    id,
+    assetName,
     assetNumber: asset.assetNumber || null,
-    name: asset.name || null,
+    name: assetName,
+    serialNumber: asset.serialNumber || null,
     epc: asset.epc || null,
     assetStatus: asset.assetStatus || asset.conditionStatus || asset.status || null,
     status: asset.assetStatus || asset.conditionStatus || asset.status || null,
     verificationStatus: asset.verificationStatus || null,
-    currentSection: asset.currentSection || asset.section || null,
-    location: asset.location || asset.currentSection || asset.section || null,
+    currentSection,
+    section: currentSection,
+    location: currentSection,
     scanHistory: Array.isArray(asset.scanHistory) ? asset.scanHistory : [],
     transferLogs: Array.isArray(asset.transferLogs) ? asset.transferLogs : [],
     verificationHistory: Array.isArray(asset.verificationHistory) ? asset.verificationHistory : [],
@@ -35,7 +43,25 @@ export async function listAssets(req, res) {
   }
 
   if (req.query.currentSection) {
-    query.currentSection = req.query.currentSection;
+    query.$or = [
+      { currentSection: req.query.currentSection },
+      { section: req.query.currentSection },
+      { location: req.query.currentSection }
+    ];
+  }
+
+  if (req.query.q) {
+    const pattern = new RegExp(String(req.query.q).trim(), 'i');
+    query.$or = [
+      ...(query.$or || []),
+      { assetName: pattern },
+      { name: pattern },
+      { assetNumber: pattern },
+      { serialNumber: pattern },
+      { epc: pattern },
+      { currentSection: pattern },
+      { section: pattern }
+    ];
   }
 
   const assets = await collection.find(query).sort({ updatedAt: -1, createdAt: -1 }).toArray();
@@ -62,7 +88,7 @@ export async function updateAsset(req, res) {
     return res.status(400).json({ error: 'Invalid asset id' });
   }
 
-  const allowed = ['assetNumber', 'name', 'epc', 'assetStatus', 'status', 'verificationStatus', 'currentSection', 'location', 'department', 'assignedTo'];
+  const allowed = ['assetName', 'assetNumber', 'name', 'serialNumber', 'epc', 'assetStatus', 'status', 'verificationStatus', 'currentSection', 'section', 'location', 'department', 'assignedTo'];
   const update = allowed.reduce((payload, key) => {
     if (req.body[key] !== undefined) payload[key] = req.body[key];
     return payload;
@@ -136,6 +162,22 @@ export async function listSections(req, res) {
   res.json({ sections });
 }
 
+export async function listSectionOptions(req, res) {
+  const sections = await databaseService.getCollection('sections');
+  const assets = await databaseService.getCollection('assets');
+  const [registeredSections, assetSections] = await Promise.all([
+    sections.find({}).sort({ name: 1 }).toArray(),
+    assets.distinct('currentSection')
+  ]);
+
+  const options = Array.from(new Set([
+    ...registeredSections.map(section => section.name || section.section || section.code).filter(Boolean),
+    ...assetSections.filter(Boolean)
+  ])).sort((a, b) => String(a).localeCompare(String(b)));
+
+  res.json({ sections: options, options });
+}
+
 export async function listTransfers(req, res) {
   const collection = await databaseService.getCollection('assettransfers');
   const transfers = await collection.find({}).sort({ transferredAt: -1 }).limit(500).toArray();
@@ -145,7 +187,7 @@ export async function listTransfers(req, res) {
 export async function listVerificationHistory(req, res) {
   const collection = await databaseService.getCollection('tagscanlogs');
   const history = await collection.find({}).sort({ verifiedAt: -1 }).limit(500).toArray();
-  res.json({ verificationHistory: history });
+  res.json({ verificationHistory: history, verifications: history });
 }
 
 export async function assetMetrics(req, res) {

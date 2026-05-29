@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAssets } from '../context/AssetContext';
+import { normalizeVerification } from '../models/VerificationModel';
 
 function badgeClass(status) {
   return String(status || 'unknown').toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -8,8 +9,27 @@ function badgeClass(status) {
 
 export default function AssetDetails() {
   const { id } = useParams();
-  const { assets } = useAssets();
+  const { assets, verificationHistory } = useAssets();
   const asset = assets.find(item => item._id === id || item.epc === id);
+
+  const assetVerificationHistory = useMemo(() => {
+    if (!asset) return [];
+    const assetRows = (asset.verificationHistory || []).map(normalizeVerification).filter(Boolean);
+    const matchingRows = (verificationHistory || []).filter(entry =>
+      String(entry.assetId || '') === String(asset._id || asset.id || '') ||
+      (entry.epc && asset.epc && entry.epc === asset.epc)
+    );
+
+    const seen = new Set();
+    return [...assetRows, ...matchingRows]
+      .filter(entry => {
+        const key = entry._id || `${entry.epc || asset.epc}-${entry.verifiedAt || ''}-${entry.status || ''}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a, b) => new Date(b.verifiedAt || 0) - new Date(a.verifiedAt || 0));
+  }, [asset, verificationHistory]);
 
   if (!asset) {
     return (
@@ -48,7 +68,7 @@ export default function AssetDetails() {
       <section className="erp-panel">
         <div className="panel-heading">
           <h2>Verification History</h2>
-          <span>{asset.verificationHistory.length} records</span>
+          <span>{assetVerificationHistory.length} records</span>
         </div>
         <div className="table-wrap">
           <table className="erp-table">
@@ -62,7 +82,7 @@ export default function AssetDetails() {
               </tr>
             </thead>
             <tbody>
-              {asset.verificationHistory.map((entry, index) => (
+              {assetVerificationHistory.map((entry, index) => (
                 <tr key={entry._id || `${entry.epc}-${index}`}>
                   <td>{entry.epc || asset.epc || '-'}</td>
                   <td>{entry.currentSection || '-'}</td>
@@ -71,7 +91,7 @@ export default function AssetDetails() {
                   <td>{entry.verifiedAt ? new Date(entry.verifiedAt).toLocaleString() : '-'}</td>
                 </tr>
               ))}
-              {!asset.verificationHistory.length && (
+              {!assetVerificationHistory.length && (
                 <tr><td className="empty-cell" colSpan="5">No verification history is attached to this asset.</td></tr>
               )}
             </tbody>

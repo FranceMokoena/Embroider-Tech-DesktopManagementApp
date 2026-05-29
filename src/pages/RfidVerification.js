@@ -19,8 +19,8 @@ export default function RfidVerification() {
   const submit = async event => {
     event.preventDefault();
     const list = epcs.split(/[,\n\s]+/).filter(Boolean);
-    if (!list.length) return;
-    await verifyRoom({ epcs: list, currentSection });
+    if (!list.length || !currentSection) return;
+    await verifyRoom({ epcs: list, currentSection, section: currentSection });
   };
 
   return (
@@ -36,8 +36,8 @@ export default function RfidVerification() {
         <form className="verification-form" onSubmit={submit}>
           <label>
             Current section
-            <select value={currentSection} onChange={event => setCurrentSection(event.target.value)}>
-              <option value="">Unassigned section</option>
+            <select value={currentSection} onChange={event => setCurrentSection(event.target.value)} required>
+              <option value="">Select section</option>
               {sectionOptions.map(section => (
                 <option key={section} value={section}>{section}</option>
               ))}
@@ -45,9 +45,9 @@ export default function RfidVerification() {
           </label>
           <label>
             EPC input
-            <textarea rows={5} value={epcs} onChange={event => setEpcs(event.target.value)} />
+            <textarea className="compact-epc-input" rows={2} value={epcs} onChange={event => setEpcs(event.target.value)} />
           </label>
-          <button className="erp-button primary" type="submit" disabled={loading}>Verify Room</button>
+          <button className="erp-button primary" type="submit" disabled={loading || !currentSection}>Verify Room</button>
         </form>
       </section>
 

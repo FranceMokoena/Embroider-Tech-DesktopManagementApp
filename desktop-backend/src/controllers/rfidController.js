@@ -16,7 +16,7 @@ function normalizeResult(input) {
 
 export async function verifyRoom(req, res) {
   const epcs = Array.from(new Set((req.body.epcs || []).map(value => String(value).trim()).filter(Boolean)));
-  const currentSection = req.body.currentSection || req.body.sectionId || null;
+  const currentSection = req.body.currentSection || req.body.section || req.body.sectionId || null;
   const verifiedBy = req.body.verifiedBy || null;
   const verifiedAt = new Date();
 

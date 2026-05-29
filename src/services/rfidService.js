@@ -1,10 +1,11 @@
 import apiClient from './apiClient';
 
 const rfidService = {
-  verifyRoom: async ({ epcs, currentSection, sectionId, verifiedBy }) =>
+  verifyRoom: async ({ epcs, currentSection, section, sectionId, verifiedBy }) =>
     apiClient.post('/rfid/verify-room', {
       epcs,
-      currentSection,
+      currentSection: currentSection || section || sectionId,
+      section: section || currentSection || sectionId,
       sectionId,
       verifiedBy
     }),

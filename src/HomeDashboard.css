@@ -140,6 +140,12 @@
   font: inherit;
 }
 
+.verification-form .compact-epc-input {
+  min-height: 46px;
+  height: 46px;
+  resize: vertical;
+}
+
 .erp-button {
   min-height: 38px;
   border: 1px solid #98a2b3;

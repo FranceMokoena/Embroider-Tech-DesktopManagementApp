@@ -38,6 +38,41 @@ export function AssetProvider({ children }) {
     return res?.records || [];
   };
 
+  const verificationRowsFromAudit = (audit) => {
+    if (!audit || typeof audit !== 'object') return [];
+    const verifiedAt = audit.verifiedAt || audit.createdAt || new Date().toISOString();
+    const section = audit.section || audit.currentSection || null;
+
+    const fromAssets = (items = [], status) => items.map(item => ({
+      _id: item._id || item.id || item.assetId || `${item.epc || item.assetNumber}-${status}-${verifiedAt}`,
+      assetId: item.assetId || item._id || item.id || null,
+      epc: item.epc || item.epcKey || null,
+      currentSection: section,
+      expectedSection: item.currentSection || item.section || section,
+      status,
+      verifiedAt
+    }));
+
+    return [
+      ...fromAssets(audit.matchedAssets, 'Verified'),
+      ...fromAssets(audit.missingAssets, 'Missing'),
+      ...fromAssets(audit.unexpectedAssets, 'Section Mismatch'),
+      ...fromAssets(audit.unregisteredTags, 'Unregistered')
+    ];
+  };
+
+  const extractVerificationRows = (res) => {
+    const directRows = [
+      ...(res?.results || []),
+      ...(res?.verificationResults || []),
+      ...(res?.verificationHistory || []),
+      ...(res?.verifications || []),
+      ...verificationRowsFromAudit(res?.audit)
+    ];
+
+    return directRows.map(v => VerificationModel.normalizeVerification(v)).filter(Boolean);
+  };
+
   const calculateMetrics = useCallback((assetRecords, sectionRecords = [], transferRecords = []) => {
     const history = assetRecords.flatMap(asset => asset.verificationHistory || []);
     const latestResults = history.reduce((acc, item) => {
@@ -74,7 +109,12 @@ export function AssetProvider({ children }) {
   }, []);
 
   const loadSections = useCallback(async () => {
-    const res = await sectionsService.list();
+    let res;
+    try {
+      res = await sectionsService.options();
+    } catch (err) {
+      res = await sectionsService.list();
+    }
     const mapped = extractRecords(res).map(s => SectionModel.normalizeSection(s)).filter(Boolean);
     setSections(mapped);
     return mapped;
@@ -82,8 +122,9 @@ export function AssetProvider({ children }) {
 
   const loadVerificationHistory = useCallback(async (params = {}) => {
     const res = await assetsService.verificationHistory(params);
-    const mapped = extractRecords(res).map(v => VerificationModel.normalizeVerification(v)).filter(Boolean);
+    const mapped = extractVerificationRows(res);
     setVerificationHistory(mapped);
+    setVerificationResults(prev => (prev.length ? prev : mapped.slice(0, 10)));
     return mapped;
   }, []);
 
@@ -129,14 +170,13 @@ export function AssetProvider({ children }) {
     setLoading(true);
     try {
       const res = await rfidService.verifyRoom(body);
-      const results = (res?.results || res?.verificationResults || []).map(v =>
-        VerificationModel.normalizeVerification(v)
-      ).filter(Boolean);
+      const results = extractVerificationRows(res);
 
       setVerificationResults(results);
 
-      if (res?.updatedAssetIds?.length) {
-        await loadAssets({ ids: res.updatedAssetIds.join(',') });
+      const updatedAssetIds = res?.updatedAssetIds || res?.audit?.updatedAssetIds || [];
+      if (updatedAssetIds.length) {
+        await loadAssets({ ids: updatedAssetIds.join(',') });
       } else {
         await loadAssets();
       }

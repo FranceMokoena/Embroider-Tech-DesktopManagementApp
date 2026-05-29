@@ -41,7 +41,7 @@ export default function AssetRegistry() {
                 <tr key={asset._id || asset.epc}>
                   <td>{asset.epc || 'Unassigned'}</td>
                   <td>{asset.assetNumber || '-'}</td>
-                  <td>{asset.name || '-'}</td>
+                  <td>{asset.assetName || asset.name || '-'}</td>
                   <td>{asset.currentSection || '-'}</td>
                   <td><span className={`status-badge ${badgeClass(asset.status)}`}>{asset.status || 'Unknown'}</span></td>
                   <td>{asset.department || '-'}</td>

@@ -12,6 +12,7 @@ function HomeDashboard() {
     assets,
     sections,
     verificationResults,
+    verificationHistory,
     dashboardMetrics,
     loading,
     error,
@@ -20,6 +21,11 @@ function HomeDashboard() {
   } = useAssets();
   const [epcInput, setEpcInput] = useState('');
   const [currentSection, setCurrentSection] = useState('');
+
+  const latestVerificationRows = useMemo(
+    () => (verificationResults.length ? verificationResults : verificationHistory).slice(0, 10),
+    [verificationHistory, verificationResults]
+  );
 
   const sectionOptions = useMemo(() => {
     const fromAssets = assets.map(asset => asset.currentSection).filter(Boolean);
@@ -39,7 +45,8 @@ function HomeDashboard() {
 
     await verifyRoom({
       epcs,
-      currentSection
+      currentSection,
+      section: currentSection
     });
   };
 
@@ -133,7 +140,7 @@ function HomeDashboard() {
                 <tr key={asset._id || asset.epc}>
                   <td>{asset.epc || 'Unassigned'}</td>
                   <td>{asset.assetNumber || '-'}</td>
-                  <td>{asset.name || '-'}</td>
+                  <td>{asset.assetName || asset.name || '-'}</td>
                   <td>{asset.currentSection || '-'}</td>
                   <td><span className={`status-badge ${statusClass(asset.status)}`}>{asset.status || 'Unknown'}</span></td>
                   <td>{asset.updatedAt ? new Date(asset.updatedAt).toLocaleString() : '-'}</td>
@@ -163,7 +170,7 @@ function HomeDashboard() {
               </tr>
             </thead>
             <tbody>
-              {verificationResults.map(result => (
+              {latestVerificationRows.map(result => (
                 <tr key={result._id || `${result.epc}-${result.verifiedAt}`}>
                   <td>{result.epc || '-'}</td>
                   <td>{result.currentSection || '-'}</td>
@@ -172,9 +179,9 @@ function HomeDashboard() {
                   <td>{result.verifiedAt ? new Date(result.verifiedAt).toLocaleString() : '-'}</td>
                 </tr>
               ))}
-              {!verificationResults.length && (
+              {!latestVerificationRows.length && (
                 <tr>
-                  <td colSpan="5" className="empty-cell">No verification result is selected.</td>
+                  <td colSpan="5" className="empty-cell">No verification history returned yet.</td>
                 </tr>
               )}
             </tbody>
