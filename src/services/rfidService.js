@@ -9,7 +9,9 @@ const rfidService = {
       sectionId,
       verifiedBy
     }),
-  scan: async (body) => apiClient.post('/rfid/scan', body),
+  verificationHistory: async (params = {}) => apiClient.get('/rfid/verification-history', params),
+  scanHistory: async (params = {}) => apiClient.get('/rfid/scan-history', params),
+  updateAssetStatus: async (body) => apiClient.patch('/rfid/asset-status', body),
   getTag: async (epc) => apiClient.get(`/rfid/tags/${encodeURIComponent(epc)}`),
   lookup: async (epc) => apiClient.get(`/rfid/lookup/${encodeURIComponent(epc)}`)
 };

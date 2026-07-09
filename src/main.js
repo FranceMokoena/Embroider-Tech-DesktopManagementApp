@@ -75,7 +75,7 @@ function createWindow() {
     titleBarStyle: 'default',
     show: false,
     backgroundColor: '#f3f4f6',
-    title: 'EmbroideryTech RFID Asset ERP',
+    title: 'AMROD-Digital Asset Management system',
     resizable: true,
     maximizable: true,
     fullscreenable: false,

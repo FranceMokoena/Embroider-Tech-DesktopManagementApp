@@ -6,6 +6,8 @@ const emptyTechnician = {
   surname: '',
   username: '',
   email: '',
+  password: '',
+  department: '',
   phone: '',
   assignedSections: '',
   active: true
@@ -23,6 +25,7 @@ export default function Users() {
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [createdCredentials, setCreatedCredentials] = useState(null);
 
   const updateField = (key, value) => {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -32,18 +35,51 @@ export default function Users() {
     setForm(emptyTechnician);
     setEditingId(null);
     setError(null);
+    setCreatedCredentials(null);
   };
 
-  const formPayload = () => ({
-    name: form.name,
-    surname: form.surname,
-    username: form.username,
-    email: form.email,
-    phone: form.phone,
-    role: 'technician',
-    active: form.active,
-    assignedSections: form.assignedSections.split(',').map(value => value.trim()).filter(Boolean)
-  });
+  const formPayload = () => {
+    const payload = {
+      name: form.name,
+      surname: form.surname,
+      username: form.username,
+      email: form.email,
+      department: form.department,
+      phone: form.phone,
+      role: 'technician',
+      active: form.active,
+      assignedSections: form.assignedSections.split(',').map(value => value.trim()).filter(Boolean)
+    };
+
+    if (!editingId && form.password) {
+      payload.password = form.password;
+    }
+
+    return payload;
+  };
+
+  const extractCreatedCredentials = response => {
+    const temporaryPassword =
+      response?.temporaryPassword ||
+      response?.data?.temporaryPassword ||
+      response?.technician?.temporaryPassword ||
+      response?.user?.temporaryPassword;
+
+    const username =
+      response?.username ||
+      response?.data?.username ||
+      response?.technician?.username ||
+      response?.user?.username ||
+      form.username ||
+      form.email;
+
+    if (!temporaryPassword && !form.password) return null;
+
+    return {
+      username,
+      password: temporaryPassword || form.password
+    };
+  };
 
   const editTechnician = technician => {
     setEditingId(technician._id);
@@ -52,6 +88,8 @@ export default function Users() {
       surname: technician.surname || '',
       username: technician.username || '',
       email: technician.email || '',
+      password: '',
+      department: technician.department || '',
       phone: technician.phone || '',
       assignedSections: (technician.assignedSections || []).join(', '),
       active: technician.active !== false
@@ -62,14 +100,17 @@ export default function Users() {
     event.preventDefault();
     setSaving(true);
     setError(null);
+    setCreatedCredentials(null);
 
     try {
       if (editingId) {
         await updateTechnician(editingId, formPayload());
       } else {
-        await createTechnician(formPayload());
+        const response = await createTechnician(formPayload());
+        setCreatedCredentials(extractCreatedCredentials(response));
       }
-      resetForm();
+      setForm(emptyTechnician);
+      setEditingId(null);
     } catch (err) {
       setError(err.message || 'Unable to save technician.');
     } finally {
@@ -108,6 +149,11 @@ export default function Users() {
         </div>
 
         {error && <div className="erp-alert">{error}</div>}
+        {createdCredentials && (
+          <div className="erp-alert">
+            Technician created for mobile login. Username: {createdCredentials.username || '-'} Password: {createdCredentials.password}
+          </div>
+        )}
 
         <form className="management-form" onSubmit={submitTechnician}>
           <label>
@@ -125,6 +171,22 @@ export default function Users() {
           <label>
             Email
             <input type="email" value={form.email} onChange={event => updateField('email', event.target.value)} required />
+          </label>
+          {!editingId && (
+            <label>
+              Password
+              <input
+                type="password"
+                value={form.password}
+                onChange={event => updateField('password', event.target.value)}
+                placeholder="Leave blank to generate one"
+                autoComplete="new-password"
+              />
+            </label>
+          )}
+          <label>
+            Department
+            <input value={form.department} onChange={event => updateField('department', event.target.value)} placeholder="RFID" />
           </label>
           <label>
             Phone

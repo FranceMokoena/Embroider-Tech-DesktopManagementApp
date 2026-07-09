@@ -7,6 +7,7 @@ const RAW_API_BASE =
   'https://embroider-tech-desktopmanagementapp.onrender.com';
 
 const API_VERSION = process.env.REACT_APP_API_VERSION || '/api/v1';
+const REQUEST_TIMEOUT_MS = Number(process.env.REACT_APP_API_TIMEOUT_MS || 30000);
 
 function normalizeApiBase(value) {
   return String(value || '')
@@ -22,14 +23,18 @@ const defaultHeaders = {
   'X-Client-Type': 'desktop'
 };
 
-function normalizePath(path) {
+function normalizePath(path, { preserveApiPath = false } = {}) {
   const cleanPath = String(path || '/').replace(/^\/+/, '');
+  if (preserveApiPath) {
+    return `/${cleanPath}`;
+  }
+
   const withoutLegacyApi = cleanPath.replace(/^api\/v\d+\//i, '').replace(/^api\//i, '');
   return `${API_VERSION.replace(/\/+$/, '')}/${withoutLegacyApi}`;
 }
 
-function buildUrl(path, params) {
-  const url = path.startsWith('http') ? new URL(path) : new URL(normalizePath(path), `${API_BASE}/`);
+function buildUrl(path, params, options = {}) {
+  const url = path.startsWith('http') ? new URL(path) : new URL(normalizePath(path, options), `${API_BASE}/`);
 
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
@@ -58,35 +63,76 @@ function normalizeResponse(payload) {
     return payload;
   }
 
+  const recordSources = [
+    payload.records,
+    payload.assets,
+    payload.sections,
+    payload.technicians,
+    payload.users,
+    payload.transfers,
+    payload.lifecycleHistory,
+    payload.scanHistory,
+    payload.verificationHistory,
+    payload.verifications,
+    payload.results,
+    payload.summary,
+    payload.options,
+    payload.items,
+    Array.isArray(payload.data) ? payload.data : null,
+    payload.data?.records,
+    payload.data?.assets,
+    payload.data?.sections,
+    payload.data?.technicians,
+    payload.data?.transfers,
+    payload.data?.verificationHistory,
+    payload.data?.items
+  ];
+  const records = recordSources.find(Array.isArray) || [];
+
   return {
     ...payload,
-    records:
-      payload.records ||
-      payload.assets ||
-      payload.sections ||
-      payload.technicians ||
-      payload.users ||
-      payload.transfers ||
-      payload.scanHistory ||
-      payload.verificationHistory ||
-      payload.results ||
-      payload.data ||
-      payload.items ||
-      [],
+    records,
     meta: payload.meta || payload.pagination || null
   };
+}
+
+function statusMessage(status) {
+  const messages = {
+    400: 'The ERP request was not accepted. Please check the submitted data.',
+    401: 'Your session has expired. Please sign in again.',
+    403: 'You do not have permission to perform this action.',
+    404: 'The requested ERP record could not be found.',
+    409: 'This change conflicts with an existing ERP record.',
+    422: 'The submitted ERP data could not be validated.',
+    429: 'Too many requests. Please wait a moment and try again.',
+    500: 'The ERP service is unavailable. Please try again shortly.'
+  };
+  return messages[status] || `API request failed with status ${status}`;
 }
 
 function normalizeError(response, payload) {
   const message =
     payload?.error ||
     payload?.message ||
-    response.statusText ||
-    `API request failed with status ${response.status}`;
+    statusMessage(response.status) ||
+    response.statusText;
   const error = new Error(message);
   error.status = response.status;
   error.payload = payload;
   return error;
+}
+
+function normalizeNetworkError(error) {
+  const isAbort = error?.name === 'AbortError';
+  const normalized = new Error(
+    isAbort
+      ? 'The ERP request timed out. Please check the network connection and try again.'
+      : error?.message || 'Unable to reach the ERP service. Please check the network connection.'
+  );
+  normalized.status = 0;
+  normalized.code = isAbort ? 'REQUEST_TIMEOUT' : 'NETWORK_ERROR';
+  normalized.cause = error;
+  return normalized;
 }
 
 function logAuthFailure(error, context = {}) {
@@ -104,7 +150,16 @@ function logAuthFailure(error, context = {}) {
 let refreshPromise = null;
 
 async function execute(path, options = {}) {
-  const { params, body, headers: customHeaders, skipAuth, _retry, ...requestOptions } = options;
+  const {
+    params,
+    body,
+    headers: customHeaders,
+    skipAuth,
+    _retry,
+    preserveApiPath,
+    timeoutMs = REQUEST_TIMEOUT_MS,
+    ...requestOptions
+  } = options;
   const headers = { ...defaultHeaders, ...customHeaders };
   const { accessToken } = await getStoredAuth();
 
@@ -112,9 +167,13 @@ async function execute(path, options = {}) {
     headers.Authorization = `Bearer ${accessToken}`;
   }
 
+  const controller = new AbortController();
+  const timeout = timeoutMs > 0 ? window.setTimeout(() => controller.abort(), timeoutMs) : null;
+
   const config = {
     ...requestOptions,
-    headers
+    headers,
+    signal: controller.signal
   };
 
   if (body instanceof FormData) {
@@ -124,8 +183,17 @@ async function execute(path, options = {}) {
     config.body = JSON.stringify(body);
   }
 
-  const response = await fetch(buildUrl(path, params), config);
-  const payload = await parseResponse(response);
+  let response;
+  let payload;
+
+  try {
+    response = await fetch(buildUrl(path, params, { preserveApiPath }), config);
+    payload = await parseResponse(response);
+  } catch (error) {
+    throw normalizeNetworkError(error);
+  } finally {
+    if (timeout) window.clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     throw normalizeError(response, payload);
@@ -195,7 +263,7 @@ async function request(path, options = {}) {
 
 const apiClient = {
   request,
-  get: (path, params) => request(path, { method: 'GET', params }),
+  get: (path, params, options = {}) => request(path, { ...options, method: 'GET', params }),
   post: (path, body, options = {}) => request(path, { ...options, method: 'POST', body }),
   put: (path, body, options = {}) => request(path, { ...options, method: 'PUT', body }),
   patch: (path, body, options = {}) => request(path, { ...options, method: 'PATCH', body }),

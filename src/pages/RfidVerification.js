@@ -8,7 +8,7 @@ function badgeClass(status) {
 export default function RfidVerification() {
   const [epcs, setEpcs] = useState('');
   const [currentSection, setCurrentSection] = useState('');
-  const { assets, sections, verificationResults, verifyRoom, loading } = useAssets();
+  const { assets, sections, verificationAudit, verificationResults, verifyRoom, loading } = useAssets();
 
   const sectionOptions = useMemo(() => {
     const assetSections = assets.map(asset => asset.currentSection).filter(Boolean);
@@ -55,9 +55,15 @@ export default function RfidVerification() {
         <div className="panel-heading">
           <div>
             <p className="eyebrow">Results</p>
-            <h2>Verification Table</h2>
+            <h2>Room Audit Summary</h2>
           </div>
         </div>
+        <section className="metric-grid">
+          <article className="metric-card"><span>Expected</span><strong>{verificationAudit?.expectedCount ?? 0}</strong></article>
+          <article className="metric-card"><span>Scanned</span><strong>{verificationAudit?.scannedCount ?? 0}</strong></article>
+          <article className="metric-card"><span>Unique Scanned</span><strong>{verificationAudit?.uniqueScannedCount ?? verificationResults.length}</strong></article>
+          <article className="metric-card"><span>Verification</span><strong>{verificationAudit?.verificationPercentage ?? 0}%</strong></article>
+        </section>
         <div className="table-wrap">
           <table className="erp-table">
             <thead>

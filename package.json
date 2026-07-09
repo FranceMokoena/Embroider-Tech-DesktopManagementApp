@@ -1,7 +1,7 @@
 {
   "name": "embroidery-desktop",
   "version": "1.0.4",
-  "description": "EmbroideryTech Desktop Management Application",
+  "description": "AMROD-Digital Asset Management system",
   "main": "build/electron.js",
   "homepage": "./",
   "scripts": {
@@ -30,8 +30,8 @@
   },
   "build": {
     "appId": "com.embroiderytech.desktop",
-    "productName": "EmbroideryTech-Management-System",
-    "copyright": "Copyright © 2024 EmbroideryTech",
+    "productName": "AMROD-Digital Asset Management system",
+    "copyright": "Copyright © 2024 AMROD",
     "directories": {
       "output": "dist"
     },
@@ -70,12 +70,12 @@
       "icon": "build-resources/logo256.png",
       "requestedExecutionLevel": "asInvoker",
       "verifyUpdateCodeSignature": false,
-      "publisherName": "EmbroideryTech",
+      "publisherName": "AMROD",
       "fileAssociations": [
         {
           "ext": "emb",
-          "name": "EmbroideryTech Project",
-          "description": "EmbroideryTech Management Project File"
+          "name": "AMROD Asset Project",
+          "description": "AMROD Digital Asset Management Project File"
         }
       ]
     },
@@ -85,18 +85,18 @@
       "allowElevation": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "EmbroideryTech Management",
+      "shortcutName": "AMROD Digital Asset Management",
       "license": "LICENSE",
       "language": "1033",
       "perMachine": false,
       "deleteAppDataOnUninstall": true,
       "runAfterFinish": true,
-      "menuCategory": "EmbroideryTech",
-      "artifactName": "EmbroideryTech-Management-Setup-${version}.${ext}",
-      "uninstallDisplayName": "EmbroideryTech Management System"
+      "menuCategory": "AMROD",
+      "artifactName": "AMROD-Digital-Asset-Management-Setup-${version}.${ext}",
+      "uninstallDisplayName": "AMROD-Digital Asset Management system"
     },
     "portable": {
-      "artifactName": "EmbroideryTech-Management-Portable-${version}.${ext}"
+      "artifactName": "AMROD-Digital-Asset-Management-Portable-${version}.${ext}"
     },
     "publish": {
       "provider": "github",
@@ -145,6 +145,6 @@
     "installer",
     "windows"
   ],
-  "author": "EmbroideryTech",
+  "author": "AMROD",
   "license": "ISC"
 }

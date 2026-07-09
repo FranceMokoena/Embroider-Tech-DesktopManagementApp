@@ -1,4 +1,7 @@
+import { ObjectId } from 'mongodb';
 import databaseService from '../services/databaseService.js';
+
+const toObjectId = id => ObjectId.isValid(id) ? new ObjectId(id) : null;
 
 function normalizeResult(input) {
   return {
@@ -127,5 +130,63 @@ export async function lookupTag(req, res) {
       currentSection: asset?.currentSection || null,
       status: asset?.verificationStatus || asset?.status || tag?.status || null
     }
+  });
+}
+
+export async function updateAssetStatus(req, res) {
+  const assetId = req.body.assetId || req.body.id || null;
+  const epc = req.body.epc || null;
+  const status = req.body.verificationStatus || req.body.status || null;
+
+  if ((!assetId && !epc) || !status) {
+    return res.status(400).json({ error: 'assetId or epc and status are required' });
+  }
+
+  const objectId = assetId ? toObjectId(String(assetId)) : null;
+  const query = objectId ? { _id: objectId } : { epc };
+  const now = new Date();
+  const assets = await databaseService.getCollection('assets');
+  const logs = await databaseService.getCollection('tagscanlogs');
+
+  const update = {
+    verificationStatus: status,
+    updatedAt: now,
+    ...(req.body.currentSection || req.body.section ? {
+      currentSection: req.body.currentSection || req.body.section,
+      section: req.body.currentSection || req.body.section
+    } : {})
+  };
+
+  const result = await assets.findOneAndUpdate(
+    query,
+    { $set: update },
+    { returnDocument: 'after' }
+  );
+
+  if (!result.value) {
+    return res.status(404).json({ error: 'Asset not found' });
+  }
+
+  const history = normalizeResult({
+    assetId: result.value._id,
+    epc: result.value.epc,
+    currentSection: req.body.currentSection || req.body.section || result.value.currentSection || null,
+    expectedSection: result.value.section || null,
+    status,
+    verifiedAt: now,
+    verifiedBy: req.body.verifiedBy || null,
+    notes: req.body.notes || null
+  });
+
+  await logs.insertOne(history);
+  await assets.updateOne(
+    { _id: result.value._id },
+    { $push: { verificationHistory: history } }
+  );
+
+  return res.json({
+    success: true,
+    asset: result.value,
+    verification: history
   });
 }

@@ -1,9 +1,13 @@
 import React from 'react';
 
 const settings = [
-  ['API contract', '/api/v1/assets, /api/v1/assets/sections, /api/v1/assets/transfers', 'Enforced'],
+  ['Asset contract', 'GET/POST /api/v1/assets, GET/PATCH/DELETE /api/v1/assets/:id', 'Enforced'],
+  ['Section contract', 'GET/POST /api/v1/sections, PATCH/DELETE /api/v1/sections/:id', 'Enforced'],
+  ['RFID contract', 'GET /api/v1/rfid/verification-history, POST /api/v1/rfid/verify-room, PATCH /api/v1/rfid/asset-status', 'Enforced'],
+  ['Lifecycle contract', 'GET/POST /api/v1/transfers, GET /api/v1/transfers/:id', 'Enforced'],
+  ['Profile contract', 'GET /api/auth/profile', 'Enforced'],
   ['Desktop shell', 'Local React build loaded through Electron loadFile', 'Enforced'],
-  ['RFID identity', 'Asset.epc and Asset.currentSection', 'Enforced'],
+  ['RFID identity', 'Asset.epc, Asset.section, Asset.currentSection, Asset.verificationStatus', 'Enforced'],
   ['Legacy guard', 'Repository contamination check before build', 'Enforced']
 ];
 

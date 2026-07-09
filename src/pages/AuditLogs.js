@@ -33,7 +33,7 @@ export default function AuditLogs() {
               {verificationHistory.map(entry => (
                 <tr key={entry._id || `${entry.epc}-${entry.verifiedAt}`}>
                   <td>{entry.epc || '-'}</td>
-                  <td>{entry.assetId || '-'}</td>
+                  <td>{entry.assetName || entry.assetNumber || entry.assetId || '-'}</td>
                   <td>{entry.currentSection || '-'}</td>
                   <td>{entry.expectedSection || '-'}</td>
                   <td><span className={`status-badge ${badgeClass(entry.status)}`}>{entry.status || 'Unknown'}</span></td>

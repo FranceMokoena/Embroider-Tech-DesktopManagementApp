@@ -34,8 +34,9 @@ export default function Reports() {
             </thead>
             <tbody>
               <tr><td>Asset Registry</td><td>/api/v1/assets</td><td>{dashboardMetrics.totalAssets}</td><td><span className="status-badge verified">Available</span></td></tr>
-              <tr><td>RFID Verification</td><td>/api/v1/assets/verification-history</td><td>{verificationHistory.length}</td><td><span className="status-badge verified">Available</span></td></tr>
-              <tr><td>Transfers</td><td>/api/v1/assets/transfers</td><td>{transfers.length}</td><td><span className="status-badge verified">Available</span></td></tr>
+              <tr><td>Section Registry</td><td>/api/v1/sections</td><td>{dashboardMetrics.sections}</td><td><span className="status-badge verified">Available</span></td></tr>
+              <tr><td>Transfer History</td><td>/api/v1/transfers</td><td>{transfers.length}</td><td><span className="status-badge verified">Available</span></td></tr>
+              <tr><td>RFID Verification History</td><td>/api/v1/rfid/verification-history</td><td>{verificationHistory.length}</td><td><span className="status-badge verified">Available</span></td></tr>
             </tbody>
           </table>
         </div>

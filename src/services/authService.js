@@ -15,6 +15,7 @@ const authService = {
     return data;
   },
   refresh: (refreshToken) => apiClient.post('/auth/refresh', { refreshToken }, { skipAuth: true }),
+  profile: () => apiClient.get('/api/auth/profile', null, { preserveApiPath: true }),
   logout: async () => {
     await clearStoredAuth();
   },

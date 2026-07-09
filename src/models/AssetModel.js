@@ -6,6 +6,7 @@ export function normalizeAsset(asset) {
   const id = asset._id || asset.id || asset.assetId || null;
   const name = asset.assetName || asset.name || null;
   const currentSection = asset.currentSection || asset.section || asset.location || null;
+  const status = asset.assetStatus || asset.conditionStatus || asset.status || null;
 
   return {
     _id: id,
@@ -15,8 +16,8 @@ export function normalizeAsset(asset) {
     serialNumber: asset.serialNumber || null,
     name,
     epc: asset.epc || null,
-    assetStatus: asset.assetStatus || asset.conditionStatus || asset.status || null,
-    status: asset.assetStatus || asset.conditionStatus || asset.status || null,
+    assetStatus: status,
+    status,
     verificationStatus: asset.verificationStatus || null,
     currentSection,
     section: currentSection,
@@ -28,6 +29,7 @@ export function normalizeAsset(asset) {
       : [],
     department: asset.department || null,
     assignedTo: asset.assignedTo || null,
+    assignedTechnician: asset.assignedTechnician || asset.technician || null,
     createdAt: asset.createdAt || null,
     updatedAt: asset.updatedAt || null,
     raw: asset

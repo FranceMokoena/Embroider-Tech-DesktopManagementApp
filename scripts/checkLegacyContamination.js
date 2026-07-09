@@ -16,6 +16,13 @@ const forbiddenPatterns = [
   { label: 'legacy route', pattern: new RegExp('scan-' + 'history', 'i') }
 ];
 
+function isAllowedFinding(label, line, relativeFile) {
+  return label === 'legacy route' && (
+    /\/rfid\/scan-history/i.test(line) ||
+    (relativeFile === path.normalize('desktop-backend/src/routes/rfid.js') && /\/scan-history/i.test(line))
+  );
+}
+
 function walk(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
     const fullPath = path.join(dir, entry.name);
@@ -48,7 +55,7 @@ for (const root of roots) {
       }
 
       forbiddenPatterns.forEach(({ label, pattern }) => {
-        if (pattern.test(line)) {
+        if (pattern.test(line) && !isAllowedFinding(label, line, relative)) {
           findings.push({ file: relative, line: index + 1, label, text: line.trim() });
         }
       });

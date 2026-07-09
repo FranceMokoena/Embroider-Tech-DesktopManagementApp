@@ -7,6 +7,7 @@ export function normalizeTechnician(technician) {
     surname: technician.surname || '',
     username: technician.username || '',
     email: technician.email || '',
+    department: technician.department || '',
     phone: technician.phone || '',
     role: technician.role || 'technician',
     assignedSections: Array.isArray(technician.assignedSections) ? technician.assignedSections : [],

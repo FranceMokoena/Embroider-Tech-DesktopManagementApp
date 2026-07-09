@@ -3,8 +3,10 @@ export function normalizeVerification(v) {
 
   return {
     _id: v._id || v.id || null,
-    assetId: v.assetId || null,
-    epc: v.epc || null,
+    assetId: v.assetId || v.asset || null,
+    assetName: v.assetName || v.name || null,
+    assetNumber: v.assetNumber || null,
+    epc: v.epc || v.tagEpc || v.rfid || null,
     currentSection: v.currentSection || v.section || v.scannedSection || v.location || null,
     expectedSection: v.expectedSection || v.expectedCurrentSection || v.assetSection || v.registeredSection || null,
     status: v.status || v.verificationStatus || null,

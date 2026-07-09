@@ -9,11 +9,16 @@ import authRoutes from './routes/auth.js';
 import assetsRoutes from './routes/assets.js';
 import rfidRoutes from './routes/rfid.js';
 import featuresRoutes from './routes/features.js';
+import sectionsRoutes from './routes/sections.js';
+import techniciansRoutes from './routes/technicians.js';
+import transfersRoutes from './routes/transfers.js';
 
 dotenv.config();
 
 const PORT = process.env.PORT || 5001;
 const app = express();
+
+app.set('trust proxy', 1);
 
 app.use(helmet());
 app.use(compression());
@@ -48,11 +53,17 @@ app.get('/', (req, res) => {
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/assets', assetsRoutes);
+app.use('/api/v1/sections', sectionsRoutes);
+app.use('/api/v1/technicians', techniciansRoutes);
+app.use('/api/v1/transfers', transfersRoutes);
 app.use('/api/v1/rfid', rfidRoutes);
 app.use('/api/v1/features', featuresRoutes);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/assets', assetsRoutes);
+app.use('/api/sections', sectionsRoutes);
+app.use('/api/technicians', techniciansRoutes);
+app.use('/api/transfers', transfersRoutes);
 app.use('/api/rfid', rfidRoutes);
 app.use('/api/features', featuresRoutes);
 

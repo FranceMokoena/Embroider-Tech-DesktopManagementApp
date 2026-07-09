@@ -59,10 +59,14 @@ export default function AssetDetails() {
       </header>
 
       <section className="metric-grid">
+        <article className="metric-card"><span>Asset Name</span><strong className="metric-text">{asset.assetName || asset.name || '-'}</strong></article>
+        <article className="metric-card"><span>Asset Number</span><strong className="metric-text">{asset.assetNumber || '-'}</strong></article>
         <article className="metric-card"><span>EPC</span><strong className="metric-text">{asset.epc || '-'}</strong></article>
+        <article className="metric-card"><span>Section</span><strong className="metric-text">{asset.section || asset.currentSection || '-'}</strong></article>
+        <article className="metric-card"><span>Status</span><strong className="metric-text">{asset.status || '-'}</strong></article>
+        <article className="metric-card"><span>Serial Number</span><strong className="metric-text">{asset.serialNumber || '-'}</strong></article>
         <article className="metric-card"><span>Current Section</span><strong className="metric-text">{asset.currentSection || '-'}</strong></article>
-        <article className="metric-card"><span>Status</span><strong className="metric-text">{asset.verificationStatus || asset.status || '-'}</strong></article>
-        <article className="metric-card"><span>Department</span><strong className="metric-text">{asset.department || '-'}</strong></article>
+        <article className="metric-card"><span>Verification Status</span><strong className="metric-text">{asset.verificationStatus || '-'}</strong></article>
       </section>
 
       <section className="erp-panel">
